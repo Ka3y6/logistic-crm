@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: mariadb_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: logistic_crm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: django_backend
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - ./.env
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - SECRET_KEY=da2889f63f8140e0a6f342e86de21bec5bb75d2c71d402e9e75670736d63319d
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/logistic_crm
+      - EMAIL_ENCRYPTION_KEY=NHUde4gZ4pcOx8mhZDElQscUAEcRrbW67NxvYjvLMUM=
+      - OPENROUTER_API_KEY=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
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: react_frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+# Не забудьте создать файл .env в корне проекта с переменными:
+# DB_ROOT_PASSWORD=your_strong_root_password
+# DB_NAME=your_db_name
+# DB_USER=your_db_user
+# DB_PASSWORD=your_db_password
+# DJANGO_SECRET_KEY=your_django_secret_key
+# DJANGO_DEBUG=True 

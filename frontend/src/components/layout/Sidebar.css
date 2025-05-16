@@ -1,0 +1,130 @@
+.sidebar {
+  width: 250px !important;
+  background-color: #f8f9fc !important;
+  border-right: 1px solid #e3e6f0;
+}
+
+.sidebar .MuiDrawer-paper {
+  width: 250px;
+  background-color: #f8f9fc !important;
+  border-right: 1px solid #e3e6f0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e3e6f0;
+}
+
+.sidebar-title {
+  color: #4e73df;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.sidebar-close {
+  color: #d1d3e2;
+}
+
+.sidebar-close:hover {
+  color: #b7b9cc;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e3e6f0;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background-color: #4e73df;
+}
+
+.status-badge {
+  width: 10px;
+  height: 10px;
+  background-color: #1cc88a;
+  border-radius: 50%;
+  border: 2px solid #f8f9fc;
+}
+
+.user-info {
+  margin-left: 1rem;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #5a5c69;
+  margin-bottom: 0.25rem;
+}
+
+.user-role {
+  color: #858796;
+  font-size: 0.85rem;
+}
+
+.sidebar-divider {
+  margin: 0 !important;
+  border-color: #e3e6f0 !important;
+}
+
+.sidebar-menu {
+  padding: 1rem 0;
+}
+
+.menu-item {
+  padding: 0.75rem 1.5rem;
+  color: #858796;
+  transition: all 0.3s;
+}
+
+.menu-item:hover {
+  background-color: #eaecf4;
+  color: #4e73df;
+}
+
+.menu-item.Mui-selected {
+  background-color: #eaecf4;
+  color: #4e73df;
+  border-left: 4px solid #4e73df;
+}
+
+.menu-item.Mui-selected .menu-icon {
+  color: #4e73df;
+}
+
+.menu-icon {
+  color: #858796;
+  min-width: 2.5rem !important;
+}
+
+.menu-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.submenu-item {
+  padding-left: 3rem !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+.submenu-item:hover {
+  background-color: #eaecf4;
+  color: #4e73df;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100% !important;
+  }
+  
+  .sidebar .MuiDrawer-paper {
+    width: 100%;
+  }
+} 
