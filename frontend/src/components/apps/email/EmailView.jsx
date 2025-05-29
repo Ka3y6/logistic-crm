@@ -121,7 +121,14 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
       {/* Основное содержимое письма с прокруткой */} 
       <Box sx={{ overflowY: 'auto', flexGrow: 1, p: 2 }}>
         {actionError && <Alert severity="error" sx={{ mb: 2 }}>{actionError}</Alert>}
-        {actionLoading && <Box sx={{textAlign: 'center', mb: 1}}><CircularProgress size={20}/></Box>}
+        {actionLoading && (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+            <CircularProgress size={20} sx={{ mr: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              Выполняется действие...
+            </Typography>
+          </Box>
+        )}
 
         {isHtml ? (
           <Box 

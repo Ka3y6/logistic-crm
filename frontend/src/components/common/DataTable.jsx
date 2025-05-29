@@ -14,14 +14,17 @@ import {
   Button,
   Stack,
   Typography,
-  CircularProgress
+  CircularProgress,
+  Checkbox,
+  Tooltip
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Description as DescriptionIcon,
-  ColorLens as ColorLensIcon
+  ColorLens as ColorLensIcon,
+  DeleteSweep as DeleteSweepIcon
 } from '@mui/icons-material';
 import api from '../../api';
 import { predefinedColors } from '../../constants/colors'; // Импортируем константу
@@ -52,10 +55,12 @@ const DataTable = forwardRef(({
   error,
   tableContext,
   onGenerateDocument,
+  onBulkDelete,
 }, ref) => {
   const [selectedCells, setSelectedCells] = useState([]);
   const [highlightedCells, setHighlightedCells] = useState({});
   const [currentColorIndex, setCurrentColorIndex] = useState(0);
+  const [selectedRows, setSelectedRows] = useState([]);
 
   useImperativeHandle(ref, () => ({
     getSelectedCellsCount: () => selectedCells.length,
@@ -91,9 +96,9 @@ const DataTable = forwardRef(({
         if (highlightsArray) {
           highlightsArray.forEach(h => {
             if (h && typeof h.row_id !== 'undefined' && typeof h.column_id !== 'undefined') {
-              loaded[`${h.row_id}-${h.column_id}`] = h.color;
+          loaded[`${h.row_id}-${h.column_id}`] = h.color;
             }
-          });
+        });
         } else {
           console.log(`[DataTable-${tableContext}] No highlights data found or data is not an array. Response data:`, response.data);
         }
@@ -229,6 +234,33 @@ const DataTable = forwardRef(({
     }
   };
 
+  const handleSelectAllRows = (event) => {
+    if (event.target.checked) {
+      setSelectedRows(data.map(row => row.id));
+    } else {
+      setSelectedRows([]);
+    }
+  };
+
+  const handleSelectRow = (rowId) => {
+    setSelectedRows(prev => 
+      prev.includes(rowId)
+        ? prev.filter(id => id !== rowId)
+        : [...prev, rowId]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    console.log('handleBulkDelete called');
+    console.log('selectedRows:', selectedRows);
+    console.log('onBulkDelete exists:', !!onBulkDelete);
+    if (selectedRows.length > 0 && onBulkDelete) {
+      console.log('Calling onBulkDelete with:', selectedRows);
+      onBulkDelete(selectedRows);
+      setSelectedRows([]); // Очищаем выбранные строки после удаления
+    }
+  };
+
   const tableCellStyle = {
     paddingTop: '8px',
     paddingBottom: '8px',
@@ -300,6 +332,27 @@ const DataTable = forwardRef(({
       )}
       {!loading && data && data.length === 0 && <Typography sx={{ p: 2 }}>Нет данных для отображения</Typography>}
       {!loading && data && data.length > 0 && (
+        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+          {selectedRows.length > 0 && (
+            <Tooltip title="Удалить выбранные">
+              <IconButton
+                color="error"
+                onClick={handleBulkDelete}
+                size="small"
+                sx={{
+                  backgroundColor: 'error.light',
+                  '&:hover': {
+                    backgroundColor: 'error.main',
+                  },
+                }}
+              >
+                <DeleteSweepIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
+      )}
+      {!loading && data && data.length > 0 && (
         <TableContainer 
           component={Paper}
           elevation={1}
@@ -315,132 +368,102 @@ const DataTable = forwardRef(({
           >
             <TableHead>
               <TableRow>
-                {columns.map((column, columnIndex) => (
-                  <TableCell 
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    checked={data.length > 0 && selectedRows.length === data.length}
+                    indeterminate={selectedRows.length > 0 && selectedRows.length < data.length}
+                    onChange={handleSelectAllRows}
+                  />
+                </TableCell>
+                {columns.map((column) => (
+                  <TableCell
                     key={column.field}
-                    sx={{
-                      ...headerCellStyle,
+                    style={{
                       minWidth: column.minWidth || 150,
                       width: column.width || 'auto',
-                      paddingLeft: '0px',
-                      paddingRight: '0px',
+                      backgroundColor: '#f5f5f5',
+                      fontWeight: 'bold',
+                      borderBottom: '2px solid rgba(224, 224, 224, 1)',
+                      borderRight: '1px solid rgba(224, 224, 224, 1)',
+                      padding: '12px 16px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
                     }}
                   >
                     {column.headerName}
                   </TableCell>
                 ))}
-                <TableCell 
-                  padding="checkbox"
-                  sx={{
-                    ...headerCellStyle,
-                    width: '80px',
-                    textAlign: 'center',
-                    paddingLeft: '0px',
-                    paddingRight: '0px',
-                  }}
-                >
-                  Действия
-                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.map((row, rowIndex) => (
-                <TableRow
-                  key={row.id}
-                  hover
-                >
-                  {columns.map((column, columnIndex) => {
-                    const cellId = `${row.id}-${column.field}`;
-                    const isSelected = selectedCells.includes(cellId);
-                    const backgroundColor = highlightedCells[cellId] || 'inherit';
-
-                    return (
-                    <TableCell 
-                        key={column.field}
-                      sx={{
-                          ...tableCellStyle,
-                        minWidth: column.minWidth || 150,
-                          width: column.width || 'auto',
-                          backgroundColor: backgroundColor,
-                          outline: isSelected ? '2px solid blue' : 'none',
-                          cursor: 'pointer',
-                          paddingLeft: '0px',
-                          paddingRight: '0px',
-                        }}
-                        onClick={() => handleCellClick(row.id, column.field)}
-                      >
-                        {column.renderCell ? column.renderCell({ row }) :
-                          column.field === 'status' ? (
-                            row[column.field] ? (
-                              <Chip
-                                label={row[column.field]}
-                                color={getStatusColor(row[column.field])}
-                                size="small"
-                              />
-                            ) : (
-                              <Chip
-                                label="Не указан"
-                                color="default"
-                                size="small"
-                              />
-                            )
-                          ) : (row[column.field] || '-')
-                        }
-                    </TableCell>
-                    )
-                  })}
-                  <TableCell 
-                    padding="checkbox"
-                    sx={{
-                      ...tableCellStyle,
-                      width: '80px',
-                      textAlign: 'center',
-                      paddingLeft: '0px',
-                      paddingRight: '0px',
-                    }}
-                  >
-                    <Box display="flex" justifyContent="center" gap={1}>
-                      {onViewDetails && (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => { e.stopPropagation(); onViewDetails(row.id); }}
-                          sx={{ p: 0.5 }}
-                        >
-                          <VisibilityIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      {onEdit && (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => { e.stopPropagation(); onEdit(row.id); }}
-                          sx={{ p: 0.5 }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      {onDelete && (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => { e.stopPropagation(); onDelete(row.id); }}
-                          sx={{ p: 0.5 }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      {onGenerateDocument && (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => { e.stopPropagation(); onGenerateDocument(row); }}
-                          sx={{ p: 0.5 }}
-                          title="Генерация документов"
-                        >
-                          <DescriptionIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 1} align="center">
+                    <CircularProgress />
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : data.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 1} align="center">
+                    Нет данных
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    hover
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedRows.includes(row.id)}
+                        onChange={() => handleSelectRow(row.id)}
+                      />
+                    </TableCell>
+                    {columns.map((column) => {
+                      const cellId = `${row.id}-${column.field}`;
+                      const isSelected = selectedCells.includes(cellId);
+                      const backgroundColor = highlightedCells[cellId] || 'inherit';
+
+                      return (
+                        <TableCell 
+                          key={column.field}
+                          sx={{
+                            ...tableCellStyle,
+                            minWidth: column.minWidth || 150,
+                            width: column.width || 'auto',
+                            backgroundColor: backgroundColor,
+                            outline: isSelected ? '2px solid blue' : 'none',
+                            cursor: column.field === 'actions' || column.field === 'status' ? 'default' : 'pointer',
+                            paddingLeft: '0px',
+                            paddingRight: '0px',
+                          }}
+                          onClick={() => handleCellClick(row.id, column.field)}
+                        >
+                          {column.renderCell ? column.renderCell({ row }) :
+                            column.field === 'status' ? (
+                              row[column.field] ? (
+                                <Chip
+                                  label={row[column.field]}
+                                  color={getStatusColor(row[column.field])}
+                                  size="small"
+                                />
+                              ) : (
+                                <Chip
+                                  label="Не указан"
+                                  color="default"
+                                  size="small"
+                                />
+                              )
+                            ) : (row[column.field] || '-')
+                          }
+                        </TableCell>
+                      )
+                    })}
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>

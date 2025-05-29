@@ -1,4 +1,4 @@
-import api from './index';
+import api from './api';
 
 export const createCalendarTask = async (taskData) => {
   console.log('createCalendarTask вызван с данными:', taskData);
@@ -21,9 +21,27 @@ export const createCalendarTask = async (taskData) => {
   }
 };
 
-export const getCalendarTasks = async () => {
+export const getCalendarTasks = async (userId = null, startDate = null, endDate = null) => {
   try {
-    const response = await api.get('/calendar/tasks/');
+    let url = '/calendar/tasks/';
+    const params = new URLSearchParams();
+    
+    if (userId) {
+      params.append('user', userId);
+    }
+    if (startDate) {
+      params.append('start_date', startDate);
+    }
+    if (endDate) {
+      params.append('end_date', endDate);
+    }
+    
+    const queryString = params.toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+    
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error('Error fetching calendar tasks:', error);

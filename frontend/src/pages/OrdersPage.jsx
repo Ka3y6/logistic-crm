@@ -37,7 +37,10 @@ import {
   FileUpload as ImportIcon,
   FileDownload as ExportIcon,
   ColorLens as ColorLensIcon,
-  FilterList as FilterListIcon
+  FilterList as FilterListIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -299,8 +302,10 @@ const OrdersPage = () => {
       
       const payload = {
         ...formData,
-        client: formData.client_id,
-        carrier: formData.carrier_id
+        client_id: formData.client,
+        carrier_id: formData.carrier,
+        status: 'new',
+        payment_status: 'pending'
       };
 
       console.log('Данные для API:', payload);
@@ -317,77 +322,43 @@ const OrdersPage = () => {
         createdOrderData = orderResponse.data;
         setSuccess('Заказ успешно создан.');
 
-        // --- Создание задач в календаре после успешного создания заказа --- 
-        if (createdOrderData && createdOrderData.id) {
-          const orderId = createdOrderData.id;
-          const clientName = clients.find(c => c.id === parseInt(formData.client_id))?.company_name || 'Неизвестный клиент';
-          const carrierName = carriers.find(c => c.id === parseInt(formData.carrier_id))?.company_name || 'Неизвестный перевозчик';
-          const route = `${formData.loading_address || '-'} -> ${formData.unloading_address || '-'}`;
+        // Создаем задачи в календаре после успешного создания заказа
+        if (payload.carrier_id) {
+          const client = clients.find(c => c.id === payload.client_id);
+          const orderNumber = payload.contract_number || 'Новый заказ';
+          const clientName = client ? client.company_name : 'Не указан';
 
-          const baseTaskDescription = `Заказ: #${orderId}\nКлиент: ${clientName}\nПеревозчик: ${carrierName}\nМаршрут: ${route}`;
-          const commonTaskData = {
-            description: baseTaskDescription,
-            priority: 'medium',
-            assignee: formData.carrier_id || null, // Assignee может быть carrier_id
-          };
-
-          let taskSuccessMessages = [];
-          let taskErrorMessages = [];
-
-          // Задача на загрузку
-          if (formData.loading_date) {
-            try {
-              await createCalendarTask({
-                ...commonTaskData,
-                title: `Загрузка: Заказ #${orderId}`,
-                deadline: new Date(formData.loading_date).toISOString(),
-              });
-              taskSuccessMessages.push('Задача на загрузку создана.');
-            } catch (taskError) {
-              console.error('Не удалось создать задачу на загрузку:', taskError);
-              taskErrorMessages.push('Ошибка создания задачи на загрузку.');
-            }
+          if (payload.loading_date) {
+            await createCalendarTask({
+              title: 'Загрузка',
+              description: `Заказ №${orderNumber}\nКлиент: ${clientName}`,
+              priority: 'high',
+              deadline: payload.loading_date,
+              assignee_id: payload.carrier_id
+            });
           }
 
-          // Задача на выгрузку
-          if (formData.unloading_date) {
-            try {
-              await createCalendarTask({
-                ...commonTaskData,
-                title: `Выгрузка: Заказ #${orderId}`,
-                deadline: new Date(formData.unloading_date).toISOString(),
-              });
-              taskSuccessMessages.push('Задача на выгрузку создана.');
-            } catch (taskError) {
-              console.error('Не удалось создать задачу на выгрузку:', taskError);
-              taskErrorMessages.push('Ошибка создания задачи на выгрузку.');
-            }
-          }
-
-          // Обновление сообщений об успехе/ошибке
-          if (taskSuccessMessages.length > 0) {
-            setSuccess(prev => `${prev} ${taskSuccessMessages.join(' ')}`);
-          }
-          if (taskErrorMessages.length > 0) {
-            setError(prev => prev ? `${prev} ${taskErrorMessages.join(' ')}` : taskErrorMessages.join(' '));
+          if (payload.unloading_date) {
+            await createCalendarTask({
+              title: 'Выгрузка',
+              description: `Заказ №${orderNumber}\nКлиент: ${clientName}`,
+              priority: 'high',
+              deadline: payload.unloading_date,
+              assignee_id: payload.carrier_id
+            });
           }
         }
-        // --- Конец создания задач в календаре --- 
       }
 
-      handleCloseDialog();
+      // Обновляем список заказов
       fetchOrders();
-    } catch (error) {
-      console.error('Ошибка при сохранении заказа:', error);
-      console.error('Ответ сервера:', error.response?.data);
-      let errorMessage = 'Произошла ошибка при сохранении заказа';
-      if (error.response?.data) {
-        const errors = Object.entries(error.response.data).map(([key, value]) => {
-            return `${key}: ${Array.isArray(value) ? value.join(', ') : value}`;
-        }).join('; ');
-        errorMessage = errors || errorMessage;
-      }
-      setError(errorMessage);
+      
+      // Закрываем диалог
+      setDialogOpen(false);
+      
+    } catch (err) {
+      console.error('Ошибка при сохранении заказа:', err);
+      setError(err.response?.data?.error || 'Произошла ошибка при сохранении заказа');
     } finally {
       setLoading(false);
     }
@@ -496,7 +467,6 @@ const OrdersPage = () => {
   };
 
   const orderColumns = [
-    { field: 'id', headerName: 'ID', minWidth: 50 },
     {
       field: 'client',
       headerName: 'Клиент',
@@ -619,16 +589,40 @@ const OrdersPage = () => {
         </Box>
       ),
     },
+    {
+      field: 'actions',
+      headerName: 'Действия',
+      minWidth: 120,
+      renderCell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={() => handleViewDetails(row.id)}
+            title="Просмотр"
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleEditOrder(row)}
+            title="Редактировать"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleDeleteOrder(row.id)}
+            title="Удалить"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ),
+    },
   ];
 
-  const handleEditClick = (orderId) => {
-    const orderToEdit = orders.find(order => order.id === orderId);
-    if (orderToEdit) {
-      handleEditOrder(orderToEdit);
-    } else {
-      console.error('Заказ для редактирования не найден:', orderId);
-      setError('Не удалось найти заказ для редактирования.')
-    }
+  const handleEditClick = (order) => {
+    handleEditOrder(order);
   };
 
   const handleColorMenuOpen = (event) => {
@@ -666,6 +660,29 @@ const OrdersPage = () => {
     }
     setSuccess('Цвет строк сброшен.');
     handleColorMenuClose();
+  };
+
+  const handleBulkDelete = async (orderIds) => {
+    if (!window.confirm(`Вы уверены, что хотите удалить ${orderIds.length} заказов?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Удаляем заказы последовательно
+      for (const orderId of orderIds) {
+        await api.delete(`/orders/${orderId}/`);
+      }
+      
+      // Обновляем список заказов
+      await fetchOrders();
+      setSuccess(`Успешно удалено ${orderIds.length} заказов`);
+    } catch (error) {
+      console.error('Ошибка при массовом удалении заказов:', error);
+      setError('Не удалось удалить некоторые заказы');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -785,6 +802,7 @@ const OrdersPage = () => {
           onGenerateDocument={handleOpenDocModal}
           tableContext="orders"
           ref={dataTableRef}
+          onBulkDelete={handleBulkDelete}
         />
       </Paper>
 

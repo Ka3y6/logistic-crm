@@ -17,6 +17,9 @@ import {
   FileDownload as ExportIcon,
   FileUpload as ImportIcon,
   ColorLens as ColorLensIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import CarrierCard from './CarrierCard';
 import CarrierForm from './CarrierForm';
@@ -25,7 +28,7 @@ import TableFilters from '../common/TableFilters';
 import { carriersApi } from '../../api/api';
 import { predefinedColors } from '../../constants/colors';
 
-const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFilters, loading, error, fetchCarriers }) => {
+const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFilters, loading, error, fetchCarriers, onBulkDelete }) => {
   const [selectedCarrier, setSelectedCarrier] = useState(null);
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -156,28 +159,81 @@ const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFil
   };
   
   const columns = [
-    { field: 'id', headerName: 'ID', minWidth: 50 },
     { field: 'company_name', headerName: 'Наименование компании', minWidth: 200 },
-    { field: 'location', headerName: 'Расположение', minWidth: 150 },
-    {
-        field: 'contacts',
-        headerName: 'Контакты',
-        minWidth: 250,
-        renderCell: ({ row }) => {
-            // Проверяем наличие контактов и менеджеров
-            const managerContacts = row.contacts?.manager;
-            if (managerContacts && managerContacts.length > 0) {
-                return managerContacts.map((contact, index) => (
-                    <div key={index}>
-                        {contact.name || '-'} ({contact.phone || '-'})
-                    </div>
-                ));
-            }
-            return '-';
-        },
-    },
     { field: 'working_directions', headerName: 'Направления', minWidth: 200 },
-];
+    { field: 'location', headerName: 'Местоположение', minWidth: 150 },
+    { field: 'fleet', headerName: 'Автопарк', minWidth: 150 },
+    { 
+      field: 'contacts', 
+      headerName: 'Контакты', 
+      minWidth: 200,
+      renderCell: ({ row }) => {
+        const contact = row.contacts || {};
+        return (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            {contact.name && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <strong>Имя:</strong> {contact.name}
+              </Box>
+            )}
+            {contact.phone && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <strong>Тел:</strong> {contact.phone}
+              </Box>
+            )}
+            {contact.email && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <strong>Email:</strong> {contact.email}
+              </Box>
+            )}
+            {contact.skype && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <strong>Skype:</strong> {contact.skype}
+              </Box>
+            )}
+            {contact.telegram && (
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <strong>Telegram:</strong> {contact.telegram}
+              </Box>
+            )}
+          </Box>
+        );
+      }
+    },
+    { field: 'comments', headerName: 'Комментарии', minWidth: 200 },
+    { field: 'known_rates', headerName: 'Известные тарифы', minWidth: 200 },
+    { field: 'vehicle_number', headerName: 'Номер ТС', minWidth: 120 },
+    {
+      field: 'actions',
+      headerName: 'Действия',
+      minWidth: 120,
+      renderCell: ({ row }) => (
+        <Box display="flex" gap={1}>
+          <IconButton
+            size="small"
+            onClick={() => handleRowClick(row.id)}
+            title="Просмотр"
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => handleEditClick(row.id)}
+            title="Редактировать"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => onDelete(row.id)}
+            title="Удалить"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ),
+    }
+  ];
 
 
   return (
@@ -243,15 +299,13 @@ const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFil
       )}
 
        <DataTable
-         ref={dataTableRef} // Передаем ref в DataTable
-         data={carriers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)}
+         ref={dataTableRef}
+         data={carriers}
          columns={columns}
          loading={loading}
          error={error}
-         onEdit={handleEditClick}
-         onDelete={onDelete}
-         onViewDetails={handleRowClick}
-         tableContext="carriers" // Указываем контекст таблицы
+         onBulkDelete={onBulkDelete}
+         tableContext="carriers"
        />
 
        <TablePagination

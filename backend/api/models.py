@@ -49,6 +49,7 @@ class CustomUser(AbstractUser):
     class Meta:
         verbose_name = _('user')
         verbose_name_plural = _('users')
+        ordering = ['-date_joined']
 
     def __str__(self):
         return self.email
@@ -64,6 +65,7 @@ class Client(models.Model):
     comments = models.TextField(verbose_name='Комментарии', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='Создатель')
 
     class Meta:
         verbose_name = 'Клиент'
@@ -192,6 +194,7 @@ class Carrier(models.Model):
     )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='Создатель')
 
     def __str__(self):
         return self.company_name or 'Без названия'
@@ -352,16 +355,24 @@ class Order(models.Model):
         ('class9', 'Класс 9'),
     ]
 
+    # Основные связи
     client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name='Клиент', null=True, blank=True)
     carrier = models.ForeignKey(Carrier, on_delete=models.PROTECT, verbose_name='Перевозчик', null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', verbose_name='Статус')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='Создатель')
     
-    # Основные данные договора
-    contract_date = models.DateField(verbose_name='Дата заключения договора', null=True, blank=True)
+    # 1. Документы и реквизиты
     contract_number = models.CharField(max_length=50, verbose_name='Номер договора', null=True, blank=True)
     transport_order_number = models.CharField(max_length=50, verbose_name='Транспортный заказ номер', null=True, blank=True)
+    invoice_number = models.CharField(max_length=50, verbose_name='Номер счета на оплату', null=True, blank=True)
+    invoice_date = models.DateField(verbose_name='Дата составления счета', null=True, blank=True)
+    act_number = models.CharField(max_length=50, verbose_name='Номер акта выполненных работ', null=True, blank=True)
+    act_date = models.DateField(verbose_name='Дата составления акта', null=True, blank=True)
+    carrier_contract_number = models.CharField(max_length=50, verbose_name='Номер контракта с перевозчиком', null=True, blank=True)
+    cmr_number = models.CharField(max_length=50, verbose_name='Номер CMR/коносамента', null=True, blank=True)
     
-    # Данные о грузе
+    # 2. Параметры груза
+    cargo_quantity = models.PositiveIntegerField(verbose_name='Количество единиц груза', null=True, blank=True)
     cargo_name = models.CharField(max_length=255, verbose_name='Наименование груза', null=True, blank=True)
     tnved_code = models.CharField(max_length=20, verbose_name='Код ТНВЭД', null=True, blank=True)
     cargo_danger = models.CharField(max_length=20, choices=DANGER_LEVEL_CHOICES, default='none', verbose_name='Опасность груза')
@@ -369,29 +380,44 @@ class Order(models.Model):
     cargo_dimensions = models.CharField(max_length=100, verbose_name='Габариты груза', null=True, blank=True)
     cargo_volume = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Объем груза (м³)', null=True, blank=True)
     
-    # Даты
+    # 3. Финансы
+    payment_currency = models.CharField(max_length=10, verbose_name='Валюта расчетов', null=True, blank=True)
+    payment_due_date = models.DateField(verbose_name='Срок оплаты счетов', null=True, blank=True)
+    demurrage_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Сумма за простой транспорта', null=True, blank=True)
+    price_usd = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена в долларах', null=True, blank=True)
+    service_cost = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Общая стоимость услуг', null=True, blank=True)
+    cost_without_vat = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Стоимость услуг без НДС', null=True, blank=True)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Ставка НДС', null=True, blank=True)
+    cost_with_vat = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Итоговая стоимость с НДС', null=True, blank=True)
+    carrier_rate = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Стоимость услуг перевозчика', null=True, blank=True)
+    client_rate = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Стоимость услуг для клиента', null=True, blank=True)
+    margin_income = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Маржинальный доход', null=True, blank=True)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена', null=True, blank=True)
+    payment_status = models.CharField(max_length=20, choices=[('pending', 'Ожидает оплаты'), ('paid', 'Оплачено')], default='pending', verbose_name='Статус оплаты')
+    
+    # 4. Перевозчик и логистика
+    carrier_currency = models.CharField(max_length=10, verbose_name='Валюта расчетов с перевозчиком', null=True, blank=True)
+    transport_type = models.CharField(max_length=20, choices=TRANSPORT_TYPE_CHOICES, verbose_name='Тип транспорта', null=True, blank=True)
+    route = models.TextField(verbose_name='Маршрут', null=True, blank=True)
+    delivery_terms = models.TextField(verbose_name='Условия поставки по INCOTERMS', null=True, blank=True)
+    
+    # 5. Сроки
+    delivery_deadline = models.DateField(verbose_name='Приблизительный срок доставки', null=True, blank=True)
     loading_date = models.DateTimeField(verbose_name='Дата загрузки', null=True, blank=True)
     departure_date = models.DateTimeField(verbose_name='Дата отправки', null=True, blank=True)
     unloading_date = models.DateTimeField(verbose_name='Дата выгрузки', null=True, blank=True)
+    contract_date = models.DateField(verbose_name='Дата заключения договора', null=True, blank=True)
     
-    # Адреса и маршрут
+    # 6. Контакты и адреса
+    shipper_address = models.TextField(verbose_name='Адрес грузоотправителя', null=True, blank=True)
+    shipper_contacts = models.TextField(verbose_name='Контактные данные грузоотправителя', null=True, blank=True)
+    consignee_okpo = models.CharField(max_length=10, verbose_name='ОКПО грузополучателя', null=True, blank=True)
     loading_address = models.TextField(verbose_name='Адрес загрузки', null=True, blank=True)
     unloading_address = models.TextField(verbose_name='Адрес выгрузки', null=True, blank=True)
-    route = models.TextField(verbose_name='Маршрут', null=True, blank=True)
-    
-    # Транспорт и условия
-    transport_type = models.CharField(max_length=20, choices=TRANSPORT_TYPE_CHOICES, verbose_name='Тип транспорта', null=True, blank=True)
-    delivery_terms = models.TextField(verbose_name='Условия поставки', null=True, blank=True)
-    
-    # Финансы
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Цена', null=True, blank=True)
-    
-    # Дополнительная информация
     shipper = models.CharField(max_length=255, verbose_name='Грузоотправитель', null=True, blank=True)
     destination = models.CharField(max_length=255, verbose_name='Пункт назначения', null=True, blank=True)
-    notes = models.TextField(verbose_name='Примечания', null=True, blank=True)
-    payment_status = models.CharField(max_length=20, choices=[('pending', 'Ожидает оплаты'), ('paid', 'Оплачено')], default='pending', verbose_name='Статус оплаты')
     
+    # Системные поля
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
@@ -585,6 +611,14 @@ class CalendarTask(models.Model):
         verbose_name=_('Создатель'),
         default=1
     )
+    assignee = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='assigned_tasks',
+        verbose_name=_('Исполнитель'),
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -598,7 +632,7 @@ class CalendarTask(models.Model):
 
     def clean(self):
         if self.deadline and self.deadline < timezone.now():
-            raise ValidationError(_('Срок выполнения не может быть в прошлом'))     
+            raise ValidationError(_('Срок выполнения не может быть в прошлом'))
 
 class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile')
@@ -610,6 +644,7 @@ class UserProfile(models.Model):
     imap_user = models.CharField(max_length=255, blank=True, null=True, verbose_name="IMAP Пользователь")
     # Мы будем хранить зашифрованный пароль. BinaryField подходит для этого.
     imap_password_encrypted = models.BinaryField(blank=True, null=True, verbose_name="IMAP Пароль (зашифрован)")
+    imap_use_ssl = models.BooleanField(default=True, verbose_name="Использовать SSL для IMAP")
 
     # SMTP Settings (часто совпадают с IMAP, но лучше хранить отдельно)
     smtp_host = models.CharField(max_length=255, blank=True, null=True, verbose_name="SMTP Хост")
@@ -670,4 +705,5 @@ class TableHighlight(models.Model):
         ordering = ['-updated_at']
 
     def __str__(self):
+        return f"{self.user.email} - {self.table_name}[{self.row_id}][{self.column_id}] = {self.color}"
         return f"{self.user.email} - {self.table_name}[{self.row_id}][{self.column_id}] = {self.color}"

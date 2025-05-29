@@ -43,13 +43,14 @@ def decrypt_data(encrypted_data: bytes) -> Optional[str]:
     if not FERNET_INSTANCE:
         logger.error("Дешифрование невозможно: ключ Fernet не инициализирован.")
         return None
+    
+    # Преобразуем входные данные в байты, если это объект памяти или что-то другое
     if not isinstance(encrypted_data, bytes):
-        # Пытаемся обработать случай, если в БД сохранилась строка (например, после base64)
         try:
-            encrypted_data = base64.urlsafe_b64decode(encrypted_data)
-        except (ValueError, TypeError):
-             logger.error("Данные для дешифрования должны быть байтами или строкой base64.")
-             return None
+            encrypted_data = bytes(encrypted_data)
+        except Exception as e:
+            logger.error(f"Не удалось преобразовать данные в байты: {e}")
+            return None
 
     try:
         decrypted_bytes = FERNET_INSTANCE.decrypt(encrypted_data)

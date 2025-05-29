@@ -9,6 +9,7 @@ import {
   DialogContent,
   Alert,
   CircularProgress,
+  Container,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import api from '../api';
@@ -95,6 +96,29 @@ const ClientsPage = () => {
     setFilters(newFilters);
   };
 
+  const handleBulkDelete = async (clientIds) => {
+    if (!window.confirm(`Вы уверены, что хотите удалить ${clientIds.length} клиентов?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Удаляем клиентов последовательно
+      for (const clientId of clientIds) {
+        await api.delete(`/clients/${clientId}/`);
+      }
+      
+      // Обновляем список клиентов
+      await fetchClients();
+      setSuccess(`Успешно удалено ${clientIds.length} клиентов`);
+    } catch (error) {
+      console.error('Ошибка при массовом удалении клиентов:', error);
+      setError('Не удалось удалить некоторых клиентов');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -104,7 +128,7 @@ const ClientsPage = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Container maxWidth="xl">
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -126,8 +150,9 @@ const ClientsPage = () => {
         onApplyFilters={handleApplyFilters}
         loading={loading}
         error={error}
+        onBulkDelete={handleBulkDelete}
       />
-    </Box>
+    </Container>
   );
 };
 

@@ -15,7 +15,8 @@ import {
   FileUpload as ImportIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  ColorLens as ColorLensIcon
+  ColorLens as ColorLensIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import ClientCard from './ClientCard';
 import ClientForm from './ClientForm';
@@ -24,7 +25,7 @@ import TableFilters from '../common/TableFilters';
 import { clientsApi } from '../../api/api';
 import { predefinedColors } from '../../constants/colors';
 
-const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loading, error }) => {
+const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loading, error, onBulkDelete }) => {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [isCardOpen, setIsCardOpen] = useState(false);
@@ -291,7 +292,37 @@ const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loadi
           { field: 'company_name', headerName: 'Наименование компании', minWidth: 200 },
           { field: 'business_scope', headerName: 'Сфера деятельности', minWidth: 200 },
           { field: 'address', headerName: 'Адрес', minWidth: 200 },
-          { field: 'unp', headerName: 'УНП', minWidth: 120 }
+          { field: 'unp', headerName: 'УНП', minWidth: 120 },
+          {
+            field: 'actions',
+            headerName: 'Действия',
+            minWidth: 120,
+            renderCell: ({ row }) => (
+              <Box display="flex" gap={1}>
+                <IconButton
+                  size="small"
+                  onClick={() => handleRowClick(row.id)}
+                  title="Просмотр"
+                >
+                  <VisibilityIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => handleEditClick(row.id)}
+                  title="Редактировать"
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => onDelete(row.id)}
+                  title="Удалить"
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            ),
+          }
         ]}
         onEdit={handleEditClick}
         onDelete={onDelete}
@@ -299,6 +330,7 @@ const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loadi
         loading={loading}
         error={error}
         tableContext="clients"
+        onBulkDelete={onBulkDelete}
       />
 
       <TablePagination

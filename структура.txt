@@ -1,8 +1,0 @@
-logistic-crm\frontend\src\api\api.js
-logistic-crm\frontend\src\components\auth\PrivateRoute.jsx
-logistic-crm\frontend\src\components\auth\LoginForm.jsx
-logistic-crm\frontend\src\components\auth\Auth.module.css
-logistic-crm\frontend\src\pages\Dashboard\ManagerPanel.jsx
-logistic-crm\frontend\src\pages\Dashboard\DashboardLayout.jsx
-logistic-crm\frontend\src\pages\Dashboard\ClientPanel.jsx
-logistic-crm\frontend\src\pages\Dashboard\AdminPanel.jsx

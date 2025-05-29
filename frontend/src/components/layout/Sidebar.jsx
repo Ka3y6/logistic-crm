@@ -21,6 +21,8 @@ import {
   CalendarToday as CalendarIcon,
   Chat as ChatIcon,
   Email as EmailIcon,
+  SupervisorAccount as UsersIcon,
+  Feedback as FeedbackIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme as useCustomTheme } from '../../contexts/ThemeContext';
@@ -30,9 +32,12 @@ const DRAWER_WIDTH = 240;
 
 function Sidebar({ isOpen }) {
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { theme: customTheme } = useCustomTheme();
   const navigate = useNavigate();
+
+  console.log('Sidebar - Current user:', user);
+  console.log('Sidebar - User role:', user?.role);
 
   const handleLogout = () => {
     logout();
@@ -60,6 +65,18 @@ function Sidebar({ isOpen }) {
       path: '/carriers',
     },
     {
+      text: 'Пользователи',
+      icon: <UsersIcon />,
+      path: '/users',
+      roles: ['admin'],
+    },
+    {
+      text: 'Заявки с сайта',
+      icon: <FeedbackIcon />,
+      path: '/site-requests',
+      roles: ['admin'],
+    },
+    {
       text: 'Календарь',
       icon: <CalendarIcon />,
       path: '/calendar',
@@ -73,11 +90,6 @@ function Sidebar({ isOpen }) {
       text: 'Почта',
       icon: <EmailIcon />,
       path: '/email',
-    },
-    {
-      text: 'Документы',
-      icon: <DocumentsIcon />,
-      path: '/documents',
     },
     {
       text: 'Финансы',
@@ -165,7 +177,22 @@ function Sidebar({ isOpen }) {
         </Box>
         <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
         <List sx={{ p: 1 }}>
-          {menuItems.map((item) => (
+          {menuItems
+            .filter(item => {
+              const shouldShow = !item.roles || (user && item.roles.includes(user.role?.toLowerCase()));
+              if (item.text === 'Пользователи') {
+                console.log('Sidebar - Users menu item:',
+                  {
+                    text: item.text,
+                    roles: item.roles,
+                    userRole: user?.role?.toLowerCase(),
+                    shouldShow
+                  }
+                );
+              }
+              return shouldShow;
+            })
+            .map((item) => (
             <ListItem
               button
               component={Link}

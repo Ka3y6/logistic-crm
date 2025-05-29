@@ -4,6 +4,7 @@ import Sidebar from './layout/Sidebar';
 import TopNavbar from './layout/TopNavbar';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useEmail } from '../contexts/EmailContext';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../api';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -53,6 +54,7 @@ const CustomToolbar = React.memo(() => {
 });
 
 function Layout({ children }) {
+  const { user } = useAuth();
   const { theme: customTheme } = useCustomTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -233,6 +235,10 @@ function Layout({ children }) {
     'list', 'bullet',
     'link'
   ], []);
+
+  // Добавляем отладочную информацию
+  console.log('Layout - Component rendered');
+  console.log('Layout - Current user:', user);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: customTheme.main?.backgroundColor }}>

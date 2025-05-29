@@ -7,16 +7,25 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from asgiref.sync import sync_to_async, async_to_sync # Добавлен async_to_sync
 from rest_framework.authentication import TokenAuthentication # Добавлен TokenAuthentication
+from rest_framework import viewsets, permissions
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.response import Response
+from .models import AISettings
+from .serializers import AISettingsSerializer
 
 from .openrouter_client import OpenRouterClient
 from .tools import TOOL_FUNCTIONS # Импортируем словарь с функциями инструментов
+
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from api.permissions import IsAdminUser  # Добавляем импорт
+import os
 
 logger = logging.getLogger(__name__)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class AssistantQueryView(APIView):
-    # Используем стандартный TokenAuthentication
-    authentication_classes = [TokenAuthentication] 
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     # Метод для получения данных из запроса, теперь нативный async
@@ -50,7 +59,7 @@ class AssistantQueryView(APIView):
             logger.info(f"Получено сообщение от пользователя {user_email}: {user_message}")
             logger.info(f"История чата: {history}")
 
-            client = OpenRouterClient()
+            client = OpenRouterClient(user=request.user)
             
             ai_response = await client.generate_response(prompt=user_message, history=history)
             
@@ -81,29 +90,25 @@ class AssistantQueryView(APIView):
                         )
                         continue
 
+                    try:
+                        tool_args = json.loads(tool_args_str)
+                    except json.JSONDecodeError:
+                        logger.error(f"Ошибка парсинга аргументов инструмента {tool_name}: {tool_args_str}")
+                        tool_results_for_next_call.append(
+                            (tool_call_id, json.dumps({"status": "error", "message": "Invalid tool arguments format."}))
+                        )
+                        continue
+
                     if tool_name in TOOL_FUNCTIONS:
                         try:
-                            tool_args = json.loads(tool_args_str)
-                            logger.info(f"Вызов инструмента '{tool_name}' с аргументами: {tool_args}")
-                            
-                            tool_function = TOOL_FUNCTIONS[tool_name]
-                            # Выполняем синхронную функцию инструмента в отдельном потоке
-                            tool_result = await sync_to_async(tool_function, thread_sensitive=True)(
-                                requesting_user=request.user, 
-                                **tool_args
-                            )
-                            
-                            logger.info(f"Результат инструмента '{tool_name}': {tool_result}")
-                            tool_results_for_next_call.append((tool_call_id, json.dumps(tool_result)))
-                        except json.JSONDecodeError:
-                            logger.error(f"Ошибка декодирования JSON аргументов для '{tool_name}': {tool_args_str}")
+                            tool_result = await TOOL_FUNCTIONS[tool_name](request.user, **tool_args)
                             tool_results_for_next_call.append(
-                                (tool_call_id, json.dumps({"status": "error", "message": f"Invalid JSON arguments for {tool_name}."}))
+                                (tool_call_id, json.dumps({"status": "success", "result": tool_result}))
                             )
-                        except Exception as e_tool:
-                            logger.exception(f"Ошибка выполнения инструмента '{tool_name}'")
+                        except Exception as e:
+                            logger.error(f"Ошибка выполнения инструмента {tool_name}: {e}")
                             tool_results_for_next_call.append(
-                                (tool_call_id, json.dumps({"status": "error", "message": f"Error executing {tool_name}: {str(e_tool)}"}))
+                                (tool_call_id, json.dumps({"status": "error", "message": str(e)}))
                             )
                     else:
                         logger.warning(f"Неизвестный инструмент: {tool_name}")
@@ -120,7 +125,7 @@ class AssistantQueryView(APIView):
                 
                 # Обработка ответа после вызова инструментов
                 if ai_final_response.get("type") == "text":
-                    actual_message = ai_final_response['content'].split('\\n')[0].strip()
+                    actual_message = ai_final_response['content'].split('\n')[0].strip()
                     response_data = {"message": actual_message}
                 elif ai_final_response.get("type") == "tool_calls": # Если AI снова запросил инструменты
                     logger.warning(f"AI попытался вызвать инструменты снова после получения результатов: {ai_final_response.get('content')}")
@@ -130,10 +135,8 @@ class AssistantQueryView(APIView):
                         try:
                             first_tool_result_str = tool_results_for_next_call[0][1]
                             first_tool_result_json = json.loads(first_tool_result_str)
-                            if first_tool_result_json.get("status") == "success" and first_tool_result_json.get("message"):
-                                final_user_message = first_tool_result_json["message"]
-                            elif first_tool_result_json.get("message"):
-                                final_user_message = first_tool_result_json["message"]
+                            if first_tool_result_json.get("status") == "success" and first_tool_result_json.get("result"):
+                                final_user_message = first_tool_result_json["result"]
                         except Exception as e_parse_tool_result:
                             logger.error(f"Ошибка при извлечении сообщения из результата предыдущего инструмента: {str(e_parse_tool_result)}")
                     response_data = {"message": final_user_message}
@@ -146,10 +149,10 @@ class AssistantQueryView(APIView):
                     try:
                         first_tool_result_str = tool_results_for_next_call[0][1]
                         first_tool_result_json = json.loads(first_tool_result_str)
-                        if first_tool_result_json.get("status") == "success" and first_tool_result_json.get("message"):
-                            final_user_message = first_tool_result_json["message"]
-                        elif first_tool_result_json.get("message"):
-                            final_user_message = first_tool_result_json["message"]
+                        if first_tool_result_json.get("status") == "success" and first_tool_result_json.get("result"):
+                            final_user_message = first_tool_result_json["result"]
+                        elif first_tool_result_json.get("result"):
+                            final_user_message = first_tool_result_json["result"]
                     except Exception as e_parse_tool_result_fallback:
                         logger.error(f"Ошибка при извлечении сообщения из результата (fallback): {str(e_parse_tool_result_fallback)}")
                     response_data = {"message": final_user_message}
@@ -162,7 +165,7 @@ class AssistantQueryView(APIView):
             
             elif ai_response.get("type") == "text":
                 logger.info(f"Получен текстовый ответ от AI: {ai_response['content']}")
-                actual_message = ai_response['content'].split('\\n')[0].strip()
+                actual_message = ai_response['content'].split('\n')[0].strip()
                 response_data = {"message": actual_message}
             
             elif ai_response.get("type") == "error":
@@ -197,16 +200,22 @@ class AssistantQueryView(APIView):
 
     # Метод post теперь вызывает _handle_ai_interaction_async через async_to_sync
     def post(self, request, *args, **kwargs):
+        logger.info(f"AssistantQueryView post method called. User: {request.user}, Auth: {request.auth}")
+        logger.info(f"Headers: {request.headers}")
+        
+        if not request.user.is_authenticated:
+            logger.warning("User is not authenticated")
+            return JsonResponse({"error": "Требуется аутентификация"}, status=401)
+            
         try:
             response_data, status_code = async_to_sync(self._handle_ai_interaction_async)(request)
-        
-        except Exception as e: # Перехват исключений из async_to_sync или если _handle_ai_interaction_async их не обработал
-            logger.exception("Outer error processing assistant query in post method")
+        except Exception as e:
+            logger.exception("Error in AssistantQueryView post method")
             response_data = {"error": f"A top-level server error occurred: {str(e)}"}
             status_code = 500
 
-        if response_data is None: # Дополнительная проверка на всякий случай
-            logger.error("Critical: response_data is None before returning JsonResponse in AssistantQueryView post method")
+        if response_data is None:
+            logger.error("Critical: response_data is None")
             response_data = {"error": "Internal server error: No response data provided by handler."}
             status_code = 500
             
@@ -217,3 +226,113 @@ class AssistantQueryView(APIView):
 # async def my_async_view(request):
 #     data, status = await AssistantQueryView()._handle_ai_interaction_async(request) # Прямой await
 #     return JsonResponse(data, status=status)
+
+class AISettingsViewSet(viewsets.ModelViewSet):
+    queryset = AISettings.objects.all()
+    serializer_class = AISettingsSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication, TokenAuthentication, SessionAuthentication]
+
+    def get_queryset(self):
+        logger.info(f"AISettingsViewSet get_queryset called. User: {self.request.user}")
+        logger.info(f"Auth header: {self.request.headers.get('Authorization')}")
+        logger.info(f"All headers: {dict(self.request.headers)}")
+        logger.info(f"User is authenticated: {self.request.user.is_authenticated}")
+        logger.info(f"User auth: {self.request.auth}")
+        
+        if not self.request.user.is_authenticated:
+            logger.warning("User is not authenticated in get_queryset")
+            return AISettings.objects.none()
+            
+        try:
+            return AISettings.objects.filter(user=self.request.user)
+        except Exception as e:
+            logger.error(f"Error in get_queryset: {str(e)}")
+            return AISettings.objects.none()
+
+    def perform_create(self, serializer):
+        logger.info(f"AISettingsViewSet perform_create called. User: {self.request.user}")
+        logger.info(f"Auth header: {self.request.headers.get('Authorization')}")
+        logger.info(f"All headers: {dict(self.request.headers)}")
+        logger.info(f"User is authenticated: {self.request.user.is_authenticated}")
+        logger.info(f"User auth: {self.request.auth}")
+        
+        try:
+            # Проверяем, есть ли уже настройки у пользователя
+            existing_settings = AISettings.objects.filter(user=self.request.user).first()
+            if existing_settings:
+                logger.info(f"Updating existing settings for user {self.request.user}")
+                # Если настройки уже существуют, обновляем их
+                serializer.update(existing_settings, serializer.validated_data)
+            else:
+                logger.info(f"Creating new settings for user {self.request.user}")
+                # Если настроек нет, создаем новые
+                serializer.save(user=self.request.user)
+        except Exception as e:
+            logger.error(f"Error in perform_create: {str(e)}")
+            raise
+
+    @action(detail=False, methods=['get'])
+    def current(self, request):
+        logger.info(f"AISettingsViewSet current called. User: {request.user}")
+        logger.info(f"Auth header: {request.headers.get('Authorization')}")
+        logger.info(f"All headers: {dict(request.headers)}")
+        logger.info(f"User is authenticated: {request.user.is_authenticated}")
+        logger.info(f"User auth: {request.auth}")
+        
+        if not request.user.is_authenticated:
+            logger.warning("User is not authenticated in current")
+            return Response({"error": "Требуется аутентификация"}, status=401)
+            
+        try:
+            settings = self.get_queryset().first()
+            if not settings:
+                logger.warning(f"No settings found for user {request.user}")
+                return Response({
+                    "error": "Настройки не найдены",
+                    "message": "Пожалуйста, создайте настройки AI ассистента с вашим API ключом"
+                }, status=404)
+            serializer = self.get_serializer(settings)
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error in current: {str(e)}")
+            return Response({"error": str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_response(request):
+    try:
+        prompt = request.data.get('prompt')
+        if not prompt:
+            return Response(
+                {'error': 'Промпт не указан'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Получаем настройки AI для пользователя
+        ai_settings = AISettings.objects.filter(user=request.user).first()
+        if not ai_settings:
+            return Response(
+                {'error': 'Настройки AI не найдены'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Создаем клиент OpenRouter
+        client = OpenRouterClient(
+            api_key=ai_settings.api_key,
+            model=ai_settings.model,
+            base_url=ai_settings.base_url,
+            max_tokens=ai_settings.max_tokens,
+            temperature=ai_settings.temperature
+        )
+
+        # Генерируем ответ
+        response = client.generate_response(prompt)
+        return Response({'response': response})
+
+    except Exception as e:
+        logger.error(f"Error generating AI response: {str(e)}")
+        return Response(
+            {'error': 'Ошибка при генерации ответа'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

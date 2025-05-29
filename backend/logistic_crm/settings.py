@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,8 +28,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-p(76x@#n^k7^le
 DEBUG_STR = os.environ.get('DJANGO_DEBUG', 'True')
 DEBUG = DEBUG_STR.lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS_STRING = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
-ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STRING.split(',') if host.strip()]
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend']
 
 
 # Application definition
@@ -62,12 +62,37 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'api.views.RequestLoggingMiddleware',  # Добавляем наш middleware
 ]
 
+# Настройки CSRF и сессий
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# Настройки сессий
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = True
+
+# Настройки CORS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://logistic-crm.local",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -84,20 +109,7 @@ CORS_ALLOW_HEADERS = [
 
 CORS_EXPOSE_HEADERS = ['X-CSRFToken']
 
-CORS_ALLOW_CREDENTIALS = True
-CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = False  # Установите True в продакшене
-
-# Настройки сессии и CSRF
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Установите True в продакшене
-
-# Если фронтенд будет на другом домене/порту в production, возможно понадобится изменить
-# SESSION_COOKIE_DOMAIN = '.yourdomain.com'
-# CSRF_COOKIE_DOMAIN = '.yourdomain.com'
-
+# Настройки REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -107,12 +119,22 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'api.authentication.CustomTokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler'
+}
+
+# Настройки токенов
+REST_FRAMEWORK_TOKEN_AUTH = {
+    'AUTH_HEADER_TYPES': ('Token',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'TOKEN_EXPIRE_TIME': 24 * 60 * 60,  # 24 часа
 }
 
 SPECTACULAR_SETTINGS = {
@@ -154,15 +176,16 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'logistic_crm'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
-        'HOST': os.environ.get('DB_HOST', 'db'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'greatlineby_crm',
+        'USER': 'greatlineby_root',
+        'PASSWORD': 'c64s6KPa!',
+        'HOST': 'db',
+        'PORT': '3306',
         'OPTIONS': {
-            'client_encoding': 'UTF8',
-        },
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        }
     }
 }
 
@@ -211,7 +234,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 TELEGRAM_BOT_TOKEN = 'ваш_токен_бота'
 
-# Logging Configuration
+# Настройки логирования
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -227,26 +250,29 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG', # Устанавливаем уровень DEBUG для консольного обработчика
             'class': 'logging.StreamHandler',
-            'formatter': 'simple' # Используем простой формат для консоли
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
-            'level': 'INFO', # Оставляем INFO для стандартного логгера Django
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
             'propagate': True,
         },
-        'api.email_service': { # Логгер для нашего email_service
-            'handlers': ['console'],
-            'level': 'DEBUG', # Включаем DEBUG для этого логгера
-            'propagate': False, # Не передаем сообщения от этого логгера выше
+        'api': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
         },
-         # Можно добавить другие логгеры приложений здесь
-         '': { # Корневой логгер (для всего остального)
-            'handlers': ['console'],
-            'level': 'INFO', # Уровень INFO для всего остального
+        'rest_framework_simplejwt': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
             'propagate': True,
         },
     },

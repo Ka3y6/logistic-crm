@@ -12,7 +12,9 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
+      // Добавляем префикс "Token" к токену
       config.headers.Authorization = `Token ${token}`;
+      console.log('Request headers:', config.headers);
     }
     return config;
   },

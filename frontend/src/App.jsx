@@ -9,6 +9,7 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 import OrdersPage from './pages/OrdersPage';
 import ClientsPage from './pages/ClientsPage';
 import CarriersPage from './pages/CarriersPage';
+import UsersPage from './pages/UsersPage';
 import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ProfilePage from './pages/ProfilePage';
@@ -24,10 +25,17 @@ import OrderForm from './components/orders/OrderForm';
 import { CustomThemeProvider } from './contexts/ThemeContext';
 import SettingsPage from './pages/SettingsPage';
 import AIAssistantChat from './components/AIAssistantChat';
+import SiteRequestsPage from './pages/SiteRequestsPage';
 import './App.css';
+
+// Выводим информацию о компоненте PrivateRoute для отладки
+console.log('App - PrivateRoute component:', PrivateRoute);
 
 const DashboardRoute = () => {
   const { user } = useAuth();
+
+  console.log('DashboardRoute - Current user:', user);
+  console.log('DashboardRoute - User role:', user?.role);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -35,12 +43,16 @@ const DashboardRoute = () => {
 
   switch (user.role?.toLowerCase()) {
     case 'admin':
+      console.log('DashboardRoute - Navigating to AdminPanel');
       return <Layout><AdminPanel /></Layout>;
     case 'manager':
+      console.log('DashboardRoute - Navigating to ManagerPanel');
       return <Layout><ManagerPanel /></Layout>;
     case 'client':
+      console.log('DashboardRoute - Navigating to ClientPanel');
       return <Layout><ClientPanel /></Layout>;
     default:
+      console.log('DashboardRoute - No matching role:', user.role);
       return <Navigate to="/unauthorized" replace />;
   }
 };
@@ -167,6 +179,16 @@ function App() {
                                 }
                             />
                             <Route
+                                path="/users"
+                                element={
+                                    <PrivateRoute allowedRoles={['admin']}>
+                                        <Layout>
+                                            <UsersPage />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
                                 path="/carriers"
                                 element={
                                     <PrivateRoute allowedRoles={['admin', 'manager']}>
@@ -202,6 +224,16 @@ function App() {
                                     <PrivateRoute allowedRoles={['admin', 'manager']}>
                                         <Layout>
                                             <Email />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/site-requests"
+                                element={
+                                    <PrivateRoute allowedRoles={['admin']}>
+                                        <Layout>
+                                            <SiteRequestsPage />
                                         </Layout>
                                     </PrivateRoute>
                                 }

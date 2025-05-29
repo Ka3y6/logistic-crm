@@ -1,35 +1,77 @@
 import axios from 'axios';
 
 // Убедимся, что всегда используется HTTP и правильный путь API
-const API_BASE_URL = (process.env.REACT_APP_API_URL || '/api').replace('https://', 'http://');
+const API_BASE_URL = (process.env.REACT_APP_API_URL || '').replace('https://', 'http://');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  timeout: 10000, // 10 секунд таймаут
+  timeout: 30000, // 30 секунд таймаут
 });
+
+// Получаем CSRF токен при инициализации
+const getCsrfToken = async () => {
+  try {
+    const response = await api.get('/csrf-token');
+    const csrfToken = response.data.csrfToken;
+    api.defaults.headers.common['X-CSRFToken'] = csrfToken;
+  } catch (error) {
+    console.error('Error getting CSRF token:', error);
+  }
+};
+
+// Получаем CSRF токен при старте
+getCsrfToken();
 
 // Обработчик запросов
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Token ${token}`;
+    
+    // Убедимся, что URL начинается с /api/ для API запросов
+    if (config.url.startsWith('/api/') || config.url === '/csrf-token' || config.url === '/validate-token') {
+      // URL уже правильный
+    } else if (!config.url.startsWith('/api/')) {
+      config.url = '/api' + (config.url.startsWith('/') ? config.url : '/' + config.url);
     }
     
-    // Убедимся, что URL начинается с /api/
-    if (!config.url.startsWith('/')) {
-      config.url = '/' + config.url;
+    // Добавляем заголовки для CORS
+    config.headers['Content-Type'] = 'application/json';
+    config.headers['Accept'] = 'application/json';
+    
+    // Добавляем токен для всех запросов, кроме /login/
+    if (!config.url.includes('/login/')) {
+      if (token) {
+        // Добавляем префикс "Token" к токену
+        config.headers.Authorization = `Token ${token}`;
+        console.log('Request headers:', config.headers);
+      } else {
+        console.warn('No token found in localStorage for protected route:', config.url);
+      }
     }
     
-    console.log('Making request to:', config.url);
+    console.log('Making request to:', config.url, 'with headers:', config.headers);
     return config;
   },
   (error) => {
     console.error('Request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Добавляем перехватчик для обновления CSRF токена
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 403 && error.response?.data?.detail === 'CSRF Failed: CSRF token missing or incorrect.') {
+      await getCsrfToken();
+      // Повторяем запрос с новым токеном
+      return api(error.config);
+    }
     return Promise.reject(error);
   }
 );
@@ -41,42 +83,16 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      response: error.response?.data
-    });
-
     if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          // Неавторизован - очищаем данные только если мы не на странице логина
-          if (!window.location.pathname.includes('/login')) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-          }
-          break;
-        case 403:
-          // Доступ запрещен - просто логируем ошибку
-          console.error('Access forbidden:', error.config.url);
-          break;
-        case 404:
-          console.error('Resource not found:', error.config.url);
-          break;
-        case 500:
-          console.error('Server error:', error.response.data);
-          break;
-        default:
-          console.error('Unhandled error:', error);
-      }
+      // Обработка ошибок от сервера
+      console.error('API Error:', error.response.data);
     } else if (error.request) {
-      console.error('No response received:', error.request);
+      // Ошибка запроса
+      console.error('Request Error:', error.request);
     } else {
-      console.error('Request setup error:', error.message);
+      // Другие ошибки
+      console.error('Error:', error.message);
     }
-
     return Promise.reject(error);
   }
 );

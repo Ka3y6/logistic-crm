@@ -1,19 +1,47 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
+  // Прокси для всех запросов к бэкенду
   app.use(
-    '/api',
+    ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: 'http://localhost:8000',
+      target: 'http://127.0.0.1:8000',
       changeOrigin: true,
       secure: false,
       ws: false,
+      pathRewrite: {
+        '^/api': '/api' // Сохраняем префикс /api
+      },
       onProxyReq: (proxyReq, req, res) => {
-        // Убедимся, что запрос идет по HTTP
+        // Логируем детали запроса
+        console.log('Proxy Request Details:', {
+          originalUrl: req.originalUrl,
+          url: req.url,
+          method: req.method,
+          headers: req.headers,
+          targetUrl: proxyReq.path
+        });
+        
+        // Устанавливаем заголовки
         proxyReq.setHeader('X-Forwarded-Proto', 'http');
+        proxyReq.setHeader('X-Forwarded-Host', 'localhost:8000');
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        // Логируем ответ
+        console.log('Proxy Response:', {
+          statusCode: proxyRes.statusCode,
+          headers: proxyRes.headers,
+          originalUrl: req.originalUrl
+        });
       },
       onError: (err, req, res) => {
-        console.error('Proxy Error:', err);
+        console.error('Proxy Error:', {
+          error: err.message,
+          originalUrl: req.originalUrl,
+          url: req.url,
+          method: req.method,
+          headers: req.headers
+        });
       }
     })
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Typography, Paper, Box, Tabs, Tab } from '@mui/material';
 import EmailSettingsForm from '../components/settings/EmailSettingsForm';
+import AISettingsForm from '../components/settings/AISettingsForm';
 import Settings from '../components/Settings';
 
 function TabPanel(props) {
@@ -47,15 +48,19 @@ const SettingsPage = () => {
           <Tabs value={value} onChange={handleChange} aria-label="Настройки">
             <Tab label="Стили" {...a11yProps(0)} />
             <Tab label="Почта" {...a11yProps(1)} />
+            <Tab label="ИИ Ассистент" {...a11yProps(2)} />
           </Tabs>
         </Box>
         <TabPanel value={value} index={0}>
-        <Settings />
+          <Settings />
         </TabPanel>
         <TabPanel value={value} index={1}>
           <EmailSettingsForm />
         </TabPanel>
-    </Paper>
+        <TabPanel value={value} index={2}>
+          <AISettingsForm />
+        </TabPanel>
+      </Paper>
     </Container>
   );
 };

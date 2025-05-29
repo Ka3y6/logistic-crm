@@ -13,7 +13,8 @@ import {
   Tab,
   Menu,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Container
 } from '@mui/material';
 import { MoreVert as MoreVertIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -114,6 +115,29 @@ const CarriersPage = () => {
     setFilters(newFilters);
   };
 
+  const handleBulkDelete = async (carrierIds) => {
+    if (!window.confirm(`Вы уверены, что хотите удалить ${carrierIds.length} перевозчиков?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Удаляем перевозчиков последовательно
+      for (const carrierId of carrierIds) {
+        await api.delete(`/carriers/${carrierId}/`);
+      }
+      
+      // Обновляем список перевозчиков
+      await fetchCarriers();
+      setSuccess(`Успешно удалено ${carrierIds.length} перевозчиков`);
+    } catch (error) {
+      console.error('Ошибка при массовом удалении перевозчиков:', error);
+      setError('Не удалось удалить некоторых перевозчиков');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading && !carriers.length) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -123,7 +147,7 @@ const CarriersPage = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Container maxWidth="xl">
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -146,8 +170,9 @@ const CarriersPage = () => {
         loading={loading}
         error={error}
         fetchCarriers={fetchCarriers}
+        onBulkDelete={handleBulkDelete}
       />
-    </Box>
+    </Container>
   );
 };
 

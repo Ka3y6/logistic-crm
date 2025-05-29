@@ -1,6 +1,5 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView
 from .views import (
     OrderViewSet,
     ClientViewSet,
@@ -48,10 +47,9 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('validate-token/', validate_token, name='validate-token'),
     path('', include(router.urls)),
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularRedocView.as_view(url_name='schema'), name='docs'),
     path('financial-report/', FinancialReportView.as_view(), name='financial-report'),
     path('orders/<int:pk>/generate-contract/', DocumentViewSet.as_view({'post': 'generate_contract'})),
+    path('orders/<int:pk>/generate_document/', OrderViewSet.as_view({'post': 'generate_document'})),
     path('system/config/', system_config, name='system-config'),
     path('profile/email-settings/', UserProfileEmailSettingsView.as_view(), name='user-profile-email-settings'),
     path('email/messages/', EmailMessageListView.as_view(), name='email-messages-list'),

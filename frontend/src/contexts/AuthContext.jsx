@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import logger from '../utils/logger';
 
 export const AuthContext = createContext();
 
@@ -39,8 +40,11 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      api.defaults.headers.common['Authorization'] = `Token ${token}`;
+      api.defaults.headers.common['Authorization'] = token;
+      logger.info('Sending request with token:', token);
+      
       const response = await api.get('/validate-token/');
+      logger.info('Token validation response:', response.data);
       
       if (response.data.valid) {
         const savedUser = localStorage.getItem('user');
@@ -48,13 +52,16 @@ export const AuthProvider = ({ children }) => {
           try {
             setUser(JSON.parse(savedUser));
           } catch (error) {
+            logger.error('Error parsing saved user:', error);
             handleLogout();
           }
         }
       } else {
+        logger.warning('Token validation failed');
         handleLogout();
       }
     } catch (err) {
+      logger.error('Token validation error:', err);
       if (err.response?.status === 401) {
         handleLogout();
       } else if (!err.response) {
@@ -75,9 +82,10 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setNetworkError(false);
       
-      const response = await api.post('/login/', {
+      const response = await api.post('login/', {
         email,
-        password
+        password,
+        remember_me: rememberMe
       });
       
       const { token, user } = response.data;
@@ -94,6 +102,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       api.defaults.headers.common['Authorization'] = `Token ${token}`;
+      logger.info('Login successful, token set:', token);
       
       setUser(user);
       setError(null);
@@ -175,4 +184,6 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};
+
+export default AuthProvider; 

@@ -13,12 +13,16 @@ import {
   Alert,
   DialogActions,
   Button,
-  TextField
+  TextField,
+  Menu,
+  MenuItem,
+  Fab
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import AddIcon from '@mui/icons-material/Add';
 import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
 import { renderAsync } from 'docx-preview';
 import { OutTable, ExcelRenderer } from 'react-excel-renderer';
@@ -40,6 +44,15 @@ const OrderDocumentsTab = ({ orderId }) => {
   const [excelCols, setExcelCols] = useState([]);
   const [excelRows, setExcelRows] = useState([]);
   const docxContainerRef = useRef(null);
+  const [generateMenuAnchor, setGenerateMenuAnchor] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  const documentTypes = [
+    { id: 'invoice', name: 'Счет' },
+    { id: 'contract', name: 'Договор' },
+    { id: 'act', name: 'Акт выполненных работ' },
+    { id: 'specification', name: 'Спецификация' }
+  ];
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -259,8 +272,46 @@ const OrderDocumentsTab = ({ orderId }) => {
     setNewName('');
   };
 
+  const handleGenerateClick = (event) => {
+    setGenerateMenuAnchor(event.currentTarget);
+  };
+
+  const handleGenerateClose = () => {
+    setGenerateMenuAnchor(null);
+  };
+
+  const handleGenerateDocument = async (documentType) => {
+    try {
+      setGenerating(true);
+      const response = await api.post(`/orders/${orderId}/generate_document/`, {
+        document_type: documentType
+      });
+      
+      if (response.data) {
+        // Обновляем список документов
+        const res = await api.get(`/documents/?order=${orderId}`);
+        let docs = [];
+        if (Array.isArray(res.data)) {
+          docs = res.data.filter(doc => doc.order === orderId);
+        } else if (res.data && Array.isArray(res.data.results)) {
+          docs = res.data.results.filter(doc => doc.order === orderId);
+        } else if (res.data && Array.isArray(res.data.data)) {
+          docs = res.data.data.filter(doc => doc.order === orderId);
+        }
+        setDocuments(docs);
+        // Закрываем меню
+        handleGenerateClose();
+      }
+    } catch (error) {
+      console.error('Ошибка при генерации документа:', error);
+      setError('Не удалось сгенерировать документ');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
-    <Box>
+    <Box sx={{ position: 'relative', minHeight: '200px' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6">Документы заказа</Typography>
       </Box>
@@ -268,52 +319,64 @@ const OrderDocumentsTab = ({ orderId }) => {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress />
+        </Box>
       ) : documents.length === 0 ? (
-        <Typography color="text.secondary">Нет сгенерированных документов</Typography>
+        <Typography sx={{ p: 2, textAlign: 'center' }}>
+          Нет доступных документов
+        </Typography>
       ) : (
         <List>
-          {documents.map(doc => {
-            const nameSource = doc.name || '';
-            const fileSource = doc.file || '';
-            
-            let potentialExt = '';
-            if (fileSource.includes('.')) {
-              potentialExt = fileSource.split('.').pop().toLowerCase();
-            } else if (nameSource.includes('.')) {
-              potentialExt = nameSource.split('.').pop().toLowerCase();
-            }
-            
-            const ext = potentialExt;
-            const isPreviewSupported = ['pdf', 'docx', 'xlsx'].includes(ext);
-            
-            console.log(`Doc ID: ${doc.id}, Name: ${doc.name}, File: ${doc.file}, Ext: ${ext}, PreviewSupported: ${isPreviewSupported}`);
-
-            return (
-            <ListItem key={doc.id} secondaryAction={
-              <>
-                  <IconButton onClick={() => handleDownload(doc)} title="Скачать">
-                  <DownloadIcon />
-                </IconButton>
-                  {isPreviewSupported && (
-                    <IconButton onClick={() => handlePreview(doc)} title="Просмотр">
+          {documents.map((doc) => (
+            <ListItem
+              key={doc.id}
+              secondaryAction={
+                <Box>
+                  <IconButton edge="end" onClick={() => handlePreview(doc)}>
                     <VisibilityIcon />
                   </IconButton>
-                )}
-                  <IconButton onClick={() => handleRenameClick(doc)} title="Переименовать">
+                  <IconButton edge="end" onClick={() => handleDownload(doc)}>
+                    <DownloadIcon />
+                  </IconButton>
+                  <IconButton edge="end" onClick={() => handleRenameClick(doc)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => handleDeleteClick(doc)} title="Удалить">
+                  <IconButton edge="end" onClick={() => handleDeleteClick(doc)}>
                     <DeleteIcon />
                   </IconButton>
-              </>
-            }>
-              <ListItemText primary={doc.name} secondary={doc.document_type} />
+                </Box>
+              }
+            >
+              <ListItemText primary={doc.name} />
             </ListItem>
-            );
-          })}
+          ))}
         </List>
       )}
+
+      <Fab
+        color="primary"
+        sx={{ position: 'absolute', bottom: 16, right: 16 }}
+        onClick={handleGenerateClick}
+        disabled={generating}
+      >
+        {generating ? <CircularProgress size={24} color="inherit" /> : <AddIcon />}
+      </Fab>
+
+      <Menu
+        anchorEl={generateMenuAnchor}
+        open={Boolean(generateMenuAnchor)}
+        onClose={handleGenerateClose}
+      >
+        {documentTypes.map((type) => (
+          <MenuItem
+            key={type.id}
+            onClick={() => handleGenerateDocument(type.id)}
+          >
+            {type.name}
+          </MenuItem>
+        ))}
+      </Menu>
 
       <Dialog open={!!previewUrl} onClose={handleClosePreview} maxWidth="lg" fullWidth scroll="paper">
         <DialogTitle>Просмотр документа: {previewName}</DialogTitle>

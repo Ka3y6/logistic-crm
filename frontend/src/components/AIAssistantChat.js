@@ -140,78 +140,71 @@ function AIAssistantChat() {
                 'Content-Type': 'application/json',
             };
 
-            // --- НАСТРОЙКА АУТЕНТИФИКАЦИИ --- 
-            
-            // Вариант 1: Используем Django REST Framework Simple JWT (Закомментировано)
-            // const accessToken = localStorage.getItem('access_token'); 
-            // if (accessToken) {
-            //     headers['Authorization'] = `Bearer ${accessToken}`;
-            // } else {
-            //     console.warn('Access token not found. AI Assistant query might fail if endpoint is protected.');
-            // }
-
-            // Вариант 2: Используем стандартную TokenAuthentication DRF (rest_framework.authtoken) (АКТИВИРОВАНО)
-            const drfToken = localStorage.getItem('token'); // Получаем токен из localStorage
+            // Используем TokenAuthentication
+            const drfToken = localStorage.getItem('token');
             if (drfToken) {
-                headers['Authorization'] = `Token ${drfToken}`; // Устанавливаем заголовок
+                headers['Authorization'] = `Token ${drfToken}`;
             } else {
-                // Если токена нет, пользователь не авторизован.
                 console.warn('DRF Auth token not found. AI Assistant query might fail if endpoint is protected.');
+                setMessages(prevMessages => [...prevMessages, { 
+                    sender: 'assistant', 
+                    text: 'Ошибка авторизации. Пожалуйста, войдите в систему.' 
+                }]);
+                setIsLoading(false);
+                return;
             }
 
-            // Вариант 3: Если используете SessionAuthentication и CSRF-токены (Закомментировано)
-            // const csrfToken = getCookie('csrftoken');
-            // if (csrfToken) {
-            //     headers['X-CSRFToken'] = csrfToken;
-            // }
+            console.log('Sending request to AI Assistant:', {
+                url: '/api/ai-assistant/query/',
+                headers: headers,
+                body: {
+                    message: userMessage,
+                    history: messages.map(msg => ({
+                        role: msg.sender === 'user' ? 'user' : 'assistant',
+                        content: msg.text
+                    }))
+                }
+            });
 
-            const bodyPayload = { message: userMessage }; // Создаем payload отдельно для логирования
-
-            const fetchOptions = {
+            const response = await fetch('/api/ai-assistant/query/', {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify(bodyPayload),
-                // credentials: 'include', // Раскомментируйте эту строку, ТОЛЬКО если используете SessionAuthentication (Вариант 3)
-            };
+                body: JSON.stringify({ 
+                    message: userMessage,
+                    history: messages.map(msg => ({
+                        role: msg.sender === 'user' ? 'user' : 'assistant',
+                        content: msg.text
+                    }))
+                })
+            });
 
-            // Логирование перед отправкой
-            console.log("[AIAssistantChat] Отправляемый userMessage:", userMessage);
-            console.log("[AIAssistantChat] Отправляемый bodyPayload:", bodyPayload);
-            console.log("[AIAssistantChat] Полные fetchOptions:", fetchOptions);
-
-            const response = await fetch('/api/ai-assistant/query/', fetchOptions);
+            console.log('AI Assistant response:', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
 
             if (!response.ok) {
                 let errorText = '';
                 try {
-                    errorText = await response.text(); // Read body as text ONCE
+                    errorText = await response.text();
                 } catch (readError) {
-                    // This catch is if .text() itself fails
                     console.error("[AIAssistantChat] Failed to read error response text:", readError);
-                    // В маловероятном случае, если даже .text() не удается, создаем общее сообщение
                     throw new Error(`HTTP error! status: ${response.status}. Failed to read error response body.`);
                 }
 
-                let errorDetail = errorText; // Default to the full text
+                let errorDetail = errorText;
                 try {
-                    // Try to parse it as JSON, in case the server sends a JSON error
                     const errorData = JSON.parse(errorText);
-                    // If errorData is an object and has a more specific message, use it
                     if (typeof errorData === 'object' && errorData !== null) {
-                       errorDetail = errorData.detail || errorData.error || errorData.message || JSON.stringify(errorData);
-                    } else if (typeof errorData === 'string') { 
-                        // if JSON.parse results in a string (e.g. '"Error message itself"')
+                        errorDetail = errorData.detail || errorData.error || errorData.message || JSON.stringify(errorData);
+                    } else if (typeof errorData === 'string') {
                         errorDetail = errorData;
                     }
-                    // If errorData is not an object (e.g. just a number or boolean that was valid JSON), 
-                    // errorDetail remains errorText or becomes the stringified version.
                 } catch (parseError) {
-                    // If JSON parsing failed, errorDetail remains the raw text (e.g., HTML error page).
-                    // This is expected if the error response is not JSON.
-                    // console.warn('[AIAssistantChat] Failed to parse error response as JSON, using raw text. Error:', parseError.message);
+                    // Если не удалось распарсить JSON, используем исходный текст
                 }
 
-                // Если ошибка 401, добавим более понятное сообщение, перезаписав errorDetail
                 if (response.status === 401) {
                     errorDetail = "Ошибка авторизации. Пожалуйста, убедитесь, что вы вошли в систему.";
                 }
@@ -219,7 +212,6 @@ function AIAssistantChat() {
             }
 
             const data = await response.json();
-            // Используем data.message, так как бэкенд возвращает сообщение в этом поле
             const assistantText = (typeof data.message === 'string') ? data.message : "Ответ не получен или имеет неверный формат.";
             setMessages(prevMessages => [...prevMessages, { sender: 'assistant', text: assistantText }]);
         } catch (error) {

@@ -9,6 +9,7 @@ import DateEventsDialog from './DateEventsDialog';
 import CalendarTaskForm from './CalendarTaskForm';
 import RenderDescription from './RenderDescription';
 import './CalendarView.css';
+import { useAuth } from '../../contexts/AuthContext';
 
 // --- Обновленные Стили для Календаря --- 
 const calendarStyles = {
@@ -70,6 +71,7 @@ const getPriorityValue = (priorityString) => {
 };
 
 const CalendarView = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -81,7 +83,8 @@ const CalendarView = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const tasksData = await getCalendarTasks();
+      // Получаем задачи только для текущего пользователя
+      const tasksData = await getCalendarTasks(user.id);
       
       const formattedTasks = tasksData.results ? tasksData.results.map(task => ({
         id: task.id,
@@ -102,7 +105,7 @@ const CalendarView = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
     fetchData();
@@ -383,6 +386,7 @@ const CalendarView = () => {
         onTaskCreated={handleTaskCreated}
         initialDate={dateForNewTask}
         taskToEdit={editingTask}
+        userId={editingTask?.assignee?.id || user.id}
       />
     </Box>
   );

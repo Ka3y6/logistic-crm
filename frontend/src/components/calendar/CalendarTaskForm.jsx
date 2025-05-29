@@ -46,13 +46,14 @@ const formatDateForInput = (dateStringOrObject) => {
   }
 };
 
-const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdit }) => {
+const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdit, userId }) => {
   const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'medium',
-    deadline: '' // Инициализируем пустой строкой
+    deadline: '',
+    assignee: userId || user.id // Используем userId если он передан, иначе текущего пользователя
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -63,7 +64,6 @@ const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdi
 
     if (open) {
         let newDeadline = '';
-        // Используем taskToEdit.apiDeadline если оно есть, иначе taskToEdit.start
         const deadlineSource = taskToEdit?.apiDeadline || taskToEdit?.start;
 
         if (taskToEdit && deadlineSource) {
@@ -81,6 +81,7 @@ const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdi
             description: taskToEdit.description || '',
             priority: taskToEdit.priority || 'medium',
             deadline: newDeadline,
+            assignee: userId || user.id, // Всегда используем userId для назначения
           });
         } else { 
           setFormData({
@@ -88,12 +89,13 @@ const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdi
               description: '',
               priority: 'medium',
               deadline: newDeadline, 
+              assignee: userId || user.id, // Всегда используем userId для назначения
           });
         }
         setError('');
         setSubmitting(false);
       }
-  }, [open, initialDate, taskToEdit]);
+  }, [open, initialDate, taskToEdit, userId, user.id]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -109,11 +111,7 @@ const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdi
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('[handleSubmit] Current formData:', formData); // Логируем formData перед проверкой
-    if (!user || !user.id) {
-        setError('Не удалось определить текущего пользователя. Попробуйте перезайти.');
-        return;
-    }
+    console.log('[handleSubmit] Current formData:', formData);
     if (!formData.title || !formData.deadline) {
       setError('Пожалуйста, заполните все обязательные поля: Название, Срок.');
       console.error('Validation Error: Title or Deadline is missing. Title:', formData.title, 'Deadline:', formData.deadline);
@@ -128,7 +126,7 @@ const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdi
         title: formData.title,
         description: formData.description,
         priority: formData.priority,
-        assignee: user.id,
+        assignee_id: formData.assignee,
         deadline: new Date(formData.deadline).toISOString(),
       };
 
@@ -143,21 +141,8 @@ const CalendarTaskForm = ({ open, onClose, onTaskCreated, initialDate, taskToEdi
       onTaskCreated();
       onClose();
     } catch (err) {
-      console.error('Ошибка при сохранении задачи:', err);
-      let errorMsg = taskToEdit ? 'Произошла ошибка при обновлении задачи' : 'Произошла ошибка при создании задачи';
-      if (err.response?.data) {
-          if (typeof err.response.data === 'string') {
-              errorMsg = err.response.data;
-          } else if (err.response.data.message) {
-              errorMsg = err.response.data.message;
-          } else if (typeof err.response.data === 'object') {
-              const messages = Object.entries(err.response.data)
-                  .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-                  .join('; ');
-              if (messages) errorMsg = messages;
-          }
-      }
-      setError(errorMsg);
+      console.error('Error saving task:', err);
+      setError(err.response?.data?.message || 'Ошибка при сохранении задачи');
     } finally {
       setSubmitting(false);
     }

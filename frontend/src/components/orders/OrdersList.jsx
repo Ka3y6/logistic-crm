@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Table,
   Alert,
   Chip,
+  Link,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { ordersApi } from '../../api/api';
 import DataTable from '../common/DataTable';
 
@@ -16,19 +22,57 @@ const OrdersList = () => {
   const [filters, setFilters] = useState({});
   const navigate = useNavigate();
 
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await ordersApi.getAll(filters);
+      let ordersData = response.data;
+      
+      if (typeof ordersData === 'object' && ordersData !== null) {
+        if (Array.isArray(ordersData.results)) {
+          ordersData = ordersData.results;
+        } else if (Array.isArray(ordersData.data)) {
+          ordersData = ordersData.data;
+        }
+      }
+
+      const formattedOrders = Array.isArray(ordersData) ? ordersData.map(order => ({
+        order_number: order.id,
+        contract_number: order.contract_number || '-',
+        client_name: order.client?.company_name || 'Не указан',
+        status: order.status || 'Новый',
+        loading_date: order.loading_date ? new Date(order.loading_date).toLocaleDateString('ru-RU') : '-',
+        total_price: order.total_price ? `${order.total_price} ₽` : '-',
+        id: order.id
+      })) : [];
+      
+      setOrders(formattedOrders);
+      setError(null);
+    } catch (err) {
+      console.error('Ошибка при загрузке заказов:', err);
+      setError('Ошибка при загрузке заказов');
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
   const columns = [
     {
       field: 'order_number',
       headerName: 'Номер заказа',
       minWidth: 120,
       renderCell: (params) => (
-        <Link
-          component={RouterLink}
+        <RouterLink
           to={`/orders/${params.row.id}`}
-          sx={{ textDecoration: 'none', color: 'primary.main' }}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
           {params.value}
-        </Link>
+        </RouterLink>
       ),
     },
     { field: 'contract_number', headerName: 'Номер договора', minWidth: 150 },
@@ -36,6 +80,40 @@ const OrdersList = () => {
     { field: 'status', headerName: 'Статус', minWidth: 120 },
     { field: 'loading_date', headerName: 'Дата загрузки', minWidth: 120 },
     { field: 'total_price', headerName: 'Сумма', minWidth: 120 },
+    {
+      field: 'actions',
+      headerName: 'Действия',
+      minWidth: 120,
+      sortable: false,
+      renderCell: (params) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Tooltip title="Просмотр">
+            <IconButton
+              size="small"
+              onClick={() => navigate(`/orders/${params.row.id}`)}
+            >
+              <VisibilityIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Редактировать">
+            <IconButton
+              size="small"
+              onClick={() => handleEdit(params.row.id)}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Удалить">
+            <IconButton
+              size="small"
+              onClick={() => handleDelete(params.row.id)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
   ];
 
   const filterConfig = [
@@ -50,48 +128,6 @@ const OrdersList = () => {
     { name: 'date_from', label: 'Дата с', type: 'date' },
     { name: 'date_to', label: 'Дата по', type: 'date' },
   ];
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await ordersApi.getAll(filters);
-      let ordersData = response.data;
-      
-      console.log('Полученные данные заказов:', ordersData);
-      
-      if (typeof ordersData === 'object' && ordersData !== null) {
-        if (Array.isArray(ordersData.results)) {
-          ordersData = ordersData.results;
-        } else if (Array.isArray(ordersData.data)) {
-          ordersData = ordersData.data;
-        }
-      }
-
-      // Преобразование данных для отображения
-      const formattedOrders = Array.isArray(ordersData) ? ordersData.map(order => {
-        console.log('Обработка заказа:', order);
-        return {
-          ...order,
-          client_name: order.client?.company_name || 'Не указан',
-          loading_date: order.loading_date ? new Date(order.loading_date).toLocaleDateString('ru-RU') : '-',
-          total_price: order.total_price ? `${order.total_price} ₽` : '-',
-        };
-      }) : [];
-      
-      setOrders(formattedOrders);
-      setError(null);
-    } catch (err) {
-      console.error('Ошибка при загрузке заказов:', err);
-      setError('Ошибка при загрузке заказов');
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
 
   const handleEdit = (id) => {
     navigate(`/orders/${id}/edit`);

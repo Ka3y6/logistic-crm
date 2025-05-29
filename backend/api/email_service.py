@@ -11,6 +11,7 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 import re # Добавляем re для очистки имен папок
 from django.utils import timezone # Импортируем timezone
+from imapclient import IMAPClient  # Добавляем импорт IMAPClient
 
 from .models import UserProfile
 from .encryption_utils import decrypt_data
@@ -32,6 +33,17 @@ INBOX_PREFIX = 'INBOX.'
 # Список ящиков, которые следует пропускать (например, системные папки, не являющиеся стандартными IMAP)
 # Начнем с пустого списка, чтобы ничего не пропускать по умолчанию
 SKIPPED_MAILBOXES = set()
+
+# Gmail specific mailbox names
+GMAIL_MAILBOXES = {
+    'Sent': '[Gmail]/Отправленные',
+    'Trash': '[Gmail]/Корзина',
+    'Drafts': '[Gmail]/Черновики',
+    'Spam': '[Gmail]/Спам',
+    'Starred': '[Gmail]/Помеченные',
+    'Important': '[Gmail]/Важное',
+    'All Mail': '[Gmail]/Вся почта'
+}
 
 # Попробуем определить атрибуты и разделитель
 MAILBOX_LIST_REGEX = re.compile(r'\\((?P<flags>.*?)\\) \"(?P<delimiter>.*)\" \"?(?P<name>[^"]+)\"?')
@@ -61,6 +73,17 @@ def _get_user_credentials(user) -> Optional[Tuple[Dict[str, str], Optional[Tuple
             logger.warning(msg)
             return None, (ERR_TYPE_CONFIG, msg)
 
+        # Проверяем настройки для Gmail
+        if profile.imap_host and 'gmail.com' in profile.imap_host.lower():
+            if not profile.imap_host == 'imap.gmail.com':
+                logger.warning(f"Для Gmail рекомендуется использовать imap.gmail.com, текущий хост: {profile.imap_host}")
+            if not profile.imap_port == 993:
+                logger.warning(f"Для Gmail рекомендуется использовать порт 993, текущий порт: {profile.imap_port}")
+            if not profile.imap_use_ssl:
+                logger.warning("Для Gmail рекомендуется использовать SSL")
+            if not profile.imap_user.endswith('@gmail.com'):
+                logger.warning(f"Для Gmail рекомендуется использовать полный email адрес, текущий пользователь: {profile.imap_user}")
+
         # Возвращаем словарь и None для ошибки
         return required_fields, None
 
@@ -82,216 +105,228 @@ def _decode_email_header(header_value: str) -> str:
         # Если декодирование не удалось, возвращаем как есть (может быть ASCII)
         return header_value
 
-def _select_mailbox(mail: imaplib.IMAP4_SSL, mailbox: str, user_email: str) -> Tuple[Optional[str], Optional[Tuple[str, str]]]:
-    """Выбирает почтовый ящик, пробуя префикс INBOX., если нужно. 
-    Возвращает (selected_mailbox_name, error).
-    """
-    selected_mailbox_name = None # Инициализируем
-    logger.info(f"Выбор ящика '{mailbox}' для {user_email}")
-    status, select_info = mail.select(mailbox)
-    effective_mailbox = mailbox # Имя, которое пытаемся выбрать
-    
-    # Если не удалось и это стандартный ящик, пробуем с префиксом
-    if status != "OK" and mailbox in PREFIXABLE_MAILBOXES:
-        prefixed_mailbox = f"{INBOX_PREFIX}{mailbox}"
-        logger.info(f"Не удалось выбрать '{mailbox}', пробую '{prefixed_mailbox}' для {user_email}")
-        status, select_info = mail.select(prefixed_mailbox)
-        effective_mailbox = prefixed_mailbox # Обновляем имя, которое пытались выбрать
+def _select_mailbox(mail, mailbox_name: str, user_email: str) -> Tuple[Optional[str], Optional[Tuple[str, str]]]:
+    """Выбирает почтовый ящик, возвращает (selected_mailbox_name, error)."""
+    if not mailbox_name:
+        return None, (ERR_TYPE_CONFIG, "Не указано имя почтового ящика")
 
-    if status != "OK":
-        # Если и с префиксом не удалось, или это был не стандартный ящик
-        error_message = "Unknown error" # Значение по умолчанию
-        try:
-           error_message = select_info[0].decode()
-        except (IndexError, AttributeError):
-           pass # Оставляем значение по умолчанию
-           
-        msg = f"Не удалось выбрать ящик '{mailbox}' (или с префиксом '{effective_mailbox}') для {user_email}: {error_message}"
-        logger.error(msg)
-        return None, (ERR_TYPE_MAILBOX, msg)
+    logger.info(f"Начало выбора папки '{mailbox_name}' для {user_email}")
 
-    # Если мы дошли сюда, значит статус == "OK"
-    selected_mailbox_name = effective_mailbox # Запоминаем имя, которое сработало
-    logger.info(f"Ящик '{selected_mailbox_name}' успешно выбран для {user_email}")
-    return selected_mailbox_name, None
-
-def fetch_emails(user, mailbox: str = "INBOX", limit: int = 20, offset: int = 0) -> Tuple[Optional[List[Dict]], Optional[Tuple[str, str]]]:
-    """Подключается к IMAP, получает письма. Возвращает (emails_list, error). 
-       Поддерживает limit и offset для пагинации.
-    """
-    logger.debug(f"Начало fetch_emails для {user.email}, запрошенный ящик: '{mailbox}', лимит: {limit}, смещение: {offset}") # Добавили offset в лог
-    credentials, error = _get_user_credentials(user)
-    if error:
-        return None, error
-
-    emails_list = []
-    mail = None
-    total_emails_in_mailbox = 0 # Инициализируем общее количество
+    # Сначала пробуем стандартное имя
     try:
-        mail, error = _connect_and_login(credentials)
-        if error:
-            return None, error
-        
-        logger.debug(f"Вызов _select_mailbox для {user.email}, запрошенный ящик: '{mailbox}'")
-        selected_mailbox_name, error_info = _select_mailbox(mail, mailbox, user.email) 
-        logger.debug(f"Результат _select_mailbox: selected_mailbox_name='{selected_mailbox_name}', error_info={error_info}")
-        
-        if not selected_mailbox_name:
-            if mail: mail.logout()
-            return None, error_info 
-
-        # Ищем все письма
-        logger.debug(f"Поиск писем (search ALL) в '{selected_mailbox_name}' для {user.email}") 
-        status, messages = mail.search(None, "ALL")
-        logger.debug(f"Результат mail.search в '{selected_mailbox_name}': status='{status}', messages={messages}")
-        if status != "OK":
-            err_msg_text = f"Ошибка поиска писем для {user.email} в ящике '{selected_mailbox_name}': {messages}"
-            logger.error(err_msg_text)
-            mail.logout()
-            return None, (ERR_TYPE_OPERATION, err_msg_text)
-
-        email_ids = messages[0].split()
-        total_emails_in_mailbox = len(email_ids)
-        logger.debug(f"В ящике '{selected_mailbox_name}' найдено ID писем: {total_emails_in_mailbox}")
-        
-        # Применяем срез на основе offset и limit
-        email_ids.reverse() # Теперь email_ids[0] - самый новый
-        start_index = offset
-        end_index = offset + limit
-        ids_to_fetch = email_ids[start_index:end_index]
-        
-        logger.debug(f"Будут получены письма с индексами {start_index}-{end_index-1} (ID: {ids_to_fetch})")
-
-        for email_id in ids_to_fetch: # Итерируемся по выбранному срезу
-            # Получаем полное тело письма
-            status, msg_data = mail.fetch(email_id, '(RFC822)')
-            if status != 'OK':
-                 logger.warning(f"Не удалось получить RFC822 для письма {email_id.decode()} в {selected_mailbox_name}")
-                 continue
-
-            body_plain = None
-            body_html = None
-            raw_email = None
-
-            for response_part in msg_data:
-                if isinstance(response_part, tuple):
-                    # response_part[1] содержит полное тело письма в байтах
-                    raw_email = response_part[1]
-                    break # Нашли тело, выходим из внутреннего цикла
-            
-            if raw_email:
-                msg = email.message_from_bytes(raw_email)
-
-                # Извлекаем заголовки как и раньше
-                subject = _decode_email_header(msg.get("Subject", "Без темы"))
-                from_ = _decode_email_header(msg.get("From", "Неизвестный отправитель"))
-                # Получаем To для возможного Reply All (хотя фронтенд это пока не использует)
-                to_ = _decode_email_header(msg.get("To", "")) 
-                date_str = msg.get("Date")
-                date_iso = None # Добавим ISO формат для фронтенда
-                local_date = "Неизвестная дата"
-                if date_str:
-                    try:
-                        dt_aware = parsedate_to_datetime(date_str)
-                        if dt_aware:
-                             date_iso = dt_aware.isoformat()
-                             # Форматируем для отображения
-                             local_date = email.utils.formatdate(timezone.localtime(dt_aware).timestamp(), localtime=True) 
-                    except Exception as date_exc:
-                        logger.warning(f"Ошибка парсинга даты '{date_str}': {date_exc}")
-                        # Пробуем старый метод как fallback
-                        try:
-                             date_tuple = email.utils.parsedate_tz(date_str)
-                             if date_tuple:
-                                local_date = email.utils.formatdate(email.utils.mktime_tz(date_tuple), localtime=True)
-                        except Exception:
-                            pass # Оставляем "Неизвестная дата"
-                
-                # Парсим тело письма для plain text и html
-                if msg.is_multipart():
-                    for part in msg.walk():
-                        content_type = part.get_content_type()
-                        content_disposition = str(part.get('Content-Disposition'))
-                        charset = part.get_content_charset() or 'utf-8' # Фоллбэк на utf-8
-
-                        # Пропускаем вложения и нетекстовые части
-                        if 'attachment' in content_disposition:
-                            continue
-
-                        if content_type == 'text/plain' and body_plain is None:
-                            try:
-                                body_plain = part.get_payload(decode=True).decode(charset, errors='replace')
-                            except Exception as decode_exc:
-                                logger.warning(f"Ошибка декодирования text/plain части письма {email_id.decode()}: {decode_exc}")
-                        elif content_type == 'text/html' and body_html is None:
-                            try:
-                                body_html = part.get_payload(decode=True).decode(charset, errors='replace')
-                            except Exception as decode_exc:
-                                logger.warning(f"Ошибка декодирования text/html части письма {email_id.decode()}: {decode_exc}")
-
-                else: # Если письмо не multipart
-                    content_type = msg.get_content_type()
-                    charset = msg.get_content_charset() or 'utf-8'
-                    if content_type == 'text/plain':
-                         try:
-                            body_plain = msg.get_payload(decode=True).decode(charset, errors='replace')
-                         except Exception as decode_exc:
-                            logger.warning(f"Ошибка декодирования non-multipart text/plain письма {email_id.decode()}: {decode_exc}")
-                    elif content_type == 'text/html':
-                         try:
-                             body_html = msg.get_payload(decode=True).decode(charset, errors='replace')
-                         except Exception as decode_exc:
-                            logger.warning(f"Ошибка декодирования non-multipart text/html письма {email_id.decode()}: {decode_exc}")
-
-                # Используем plain text для превью, если есть, иначе html, иначе пусто
-                content_preview_source = body_plain if body_plain else body_html if body_html else ""
-                content_preview = (content_preview_source[:100] + '...') if len(content_preview_source) > 100 else content_preview_source
-                            
-                emails_list.append({
-                    "id": email_id.decode(), 
-                    "from": from_,
-                    "to": to_, # Добавляем поле To
-                    "subject": subject,
-                    "date": local_date, # Отформатированная локальная дата
-                    "date_iso": date_iso, # ISO дата для возможной сортировки/форматирования на фронте
-                    "content_preview": content_preview,
-                    "body_plain": body_plain, # Добавляем body_plain
-                    "body_html": body_html, # Добавляем body_html
-                    "is_read": False, # TODO: Получать статус прочитанности
-                    "is_starred": False, # TODO: Получать флаг \Flagged
-                    "attachments": [], # TODO: Реализовать получение вложений
-                    "mailbox": selected_mailbox_name # Добавляем имя ящика, где нашли письмо
-                })
-            else:
-                 logger.warning(f"Не удалось получить тело письма (RFC822) для ID {email_id.decode()}")
-
-        logger.info(f"Получено {len(emails_list)} писем из '{selected_mailbox_name}' для {user.email}") # Обновили лог
-        if mail: mail.logout()
-        # Возвращаем список писем и общее количество для пагинации
-        return emails_list, None, total_emails_in_mailbox # Успех
-
+        logger.debug(f"Попытка выбора папки '{mailbox_name}' для {user_email}")
+        typ, data = mail.select(mailbox_name)
+        if typ == "OK":
+            logger.info(f"Выбрана папка {mailbox_name}")
+            return mailbox_name, None
     except imaplib.IMAP4.error as e:
-        current_mailbox = selected_mailbox_name if 'selected_mailbox_name' in locals() and selected_mailbox_name else mailbox
-        msg = f"Операционная ошибка IMAP для {user.email} в ящике '{current_mailbox}': {e}"
-        logger.error(msg)
-        error_info = (ERR_TYPE_OPERATION, msg)
-    except ssl.SSLError as e:
-        current_mailbox = selected_mailbox_name if 'selected_mailbox_name' in locals() and selected_mailbox_name else mailbox
-        msg = f"Ошибка SSL во время операции IMAP для {user.email} в ящике '{current_mailbox}': {e}"
-        logger.error(msg)
-        error_info = (ERR_TYPE_CONNECTION, msg)
-    except Exception as e:
-        current_mailbox = selected_mailbox_name if 'selected_mailbox_name' in locals() and selected_mailbox_name else mailbox
-        msg = f"Неизвестная ошибка при получении писем для {user.email} в ящике '{current_mailbox}': {e}"
-        logger.error(msg, exc_info=True)
-        error_info = (ERR_TYPE_UNKNOWN, msg)
-    finally:
-        if mail:
-            try: mail.logout() 
-            except Exception: pass
+        logger.debug(f"Не удалось выбрать папку '{mailbox_name}': {e}")
+
+    # Если это Gmail, пробуем специальные имена папок
+    if mailbox_name in GMAIL_MAILBOXES:
+        gmail_name = GMAIL_MAILBOXES[mailbox_name]
+        try:
+            logger.debug(f"Попытка выбора Gmail папки '{gmail_name}' для {user_email}")
+            typ, data = mail.select(gmail_name)
+            if typ == "OK":
+                logger.info(f"Выбрана Gmail папка {gmail_name}")
+                return gmail_name, None
+        except imaplib.IMAP4.error as e:
+            logger.debug(f"Не удалось выбрать Gmail папку '{gmail_name}': {e}")
+
+    # Пробуем с префиксом INBOX
+    if mailbox_name in PREFIXABLE_MAILBOXES:
+        prefixed_name = f"{INBOX_PREFIX}{mailbox_name}"
+        try:
+            logger.debug(f"Попытка выбора папки с префиксом '{prefixed_name}' для {user_email}")
+            typ, data = mail.select(prefixed_name)
+            if typ == "OK":
+                logger.info(f"Выбрана папка с префиксом {prefixed_name}")
+                return prefixed_name, None
+        except imaplib.IMAP4.error as e:
+            logger.debug(f"Не удалось выбрать папку с префиксом '{prefixed_name}': {e}")
+
+    # Пробуем с префиксом /
+    try:
+        prefixed_name = f"/{mailbox_name}"
+        logger.debug(f"Попытка выбора папки с префиксом '{prefixed_name}' для {user_email}")
+        typ, data = mail.select(prefixed_name)
+        if typ == "OK":
+            logger.info(f"Выбрана папка с префиксом {prefixed_name}")
+            return prefixed_name, None
+    except imaplib.IMAP4.error as e:
+        logger.debug(f"Не удалось выбрать папку с префиксом '{prefixed_name}': {e}")
+
+    error_msg = f"Не удалось выбрать папку {mailbox_name} ни в одном варианте"
+    logger.error(error_msg)
+    return None, (ERR_TYPE_MAILBOX, error_msg)
+
+def fetch_emails(user, mailbox='INBOX', limit=20, offset=0):
+    """
+    Получение писем для пользователя с расширенной обработкой ошибок.
+    """
+    try:
+        logger.info(f"Начало fetch_emails для {user.email}, mailbox={mailbox}")
+        
+        # Получаем профиль пользователя
+        profile = UserProfile.objects.get(user=user)
+        
+        # Проверяем наличие необходимых настроек
+        if not all([profile.imap_host, profile.imap_port, profile.imap_user, profile.imap_password_encrypted]):
+            logger.error(f"Неполные настройки IMAP для пользователя {user.email}")
+            return [], (ERR_TYPE_CONFIG, "Неполные настройки почтового сервера"), 0
+        
+        # Расшифровываем пароль
+        decrypted_password = decrypt_data(profile.imap_password_encrypted)
+        if not decrypted_password:
+            logger.error(f"Не удалось расшифровать пароль для {user.email}")
+            return [], (ERR_TYPE_AUTHENTICATION, "Ошибка расшифровки учетных данных"), 0
+        
+        # Список возможных вариантов имени ящика
+        mailbox_variants = []
+        
+        # Определяем, является ли это Gmail папкой
+        is_gmail = '[Gmail]' in mailbox
+        
+        if is_gmail:
+            # Если это Gmail папка, пробуем разные варианты
+            gmail_folder = mailbox.replace('[Gmail]/', '')
+            mailbox_variants = [
+                mailbox,  # Оригинальное имя с [Gmail]/
+                gmail_folder,  # Имя без [Gmail]/
+                f"INBOX.{gmail_folder}",  # С префиксом INBOX
+                f"/{gmail_folder}",  # С префиксом слэша
+                f"[Gmail]/{gmail_folder}",  # С пробелом после [Gmail]
+                f"[Gmail]/{gmail_folder.replace(' ', '')}",  # Без пробелов
+            ]
+        else:
+            # Если это стандартное имя, пробуем найти его в GMAIL_MAILBOXES
+            if mailbox in GMAIL_MAILBOXES:
+                gmail_name = GMAIL_MAILBOXES[mailbox]
+                mailbox_variants = [
+                    gmail_name,  # Gmail имя
+                    mailbox,  # Оригинальное имя
+                    f"INBOX.{mailbox}",  # С префиксом INBOX
+                    f"/{mailbox}",  # С префиксом слэша
+                    gmail_name.replace(' ', ''),  # Без пробелов
+                ]
+            else:
+                mailbox_variants = [
+                    mailbox,  # Оригинальное имя
+                    f"INBOX.{mailbox}",  # С префиксом INBOX
+                    f"/{mailbox}",  # С префиксом слэша
+                ]
+        
+        logger.info(f"Варианты имен папок для {user.email}: {mailbox_variants}")
+        
+        # Устанавливаем соединение с IMAP
+        with IMAPClient(profile.imap_host, port=profile.imap_port, ssl=profile.imap_use_ssl) as client:
+            try:
+                logger.info(f"Подключение к IMAP серверу {profile.imap_host}:{profile.imap_port}")
+                client.login(profile.imap_user, decrypted_password)
+                logger.info(f"Успешная аутентификация для {user.email}")
+                
+                # Получаем список доступных папок
+                folders = client.list_folders()
+                logger.info(f"Доступные папки для {user.email}: {[f[2] for f in folders]}")
+                
+            except Exception as e:
+                logger.error(f"Ошибка аутентификации для {user.email}: {e}")
+                return [], (ERR_TYPE_AUTHENTICATION, str(e)), 0
+            
+            # Пробуем выбрать ящик из вариантов
+            selected_mailbox = None
+            for variant in mailbox_variants:
+                try:
+                    logger.info(f"Попытка выбора папки '{variant}' для {user.email}")
+                    client.select_folder(variant)
+                    selected_mailbox = variant
+                    logger.info(f"Успешно выбрана папка '{variant}' для {user.email}")
+                    break
+                except Exception as e:
+                    logger.warning(f"Не удалось выбрать папку '{variant}': {e}")
+            
+            if not selected_mailbox:
+                error_msg = f"Не удалось выбрать папку {mailbox} ни в одном варианте"
+                logger.error(error_msg)
+                return [], (ERR_TYPE_MAILBOX, error_msg), 0
+            
+            logger.info(f"Выбрана папка {selected_mailbox}")
+            
+            # Получаем общее количество писем
+            messages = client.search(['ALL'])
+            total_count = len(messages)
+            logger.info(f"Найдено {total_count} писем в папке {selected_mailbox}")
+            
+            # Получаем только последние письма, отсортированные по дате
+            # Используем IMAP SORT для сортировки на стороне сервера
+            try:
+                # Пробуем использовать SORT, если сервер поддерживает
+                sorted_messages = client.sort(['REVERSE DATE'], ['ALL'])
+                # Берем только нужный диапазон писем
+                start_idx = offset
+                end_idx = min(offset + limit, total_count)
+                messages_to_fetch = sorted_messages[start_idx:end_idx]
+            except Exception as e:
+                logger.warning(f"Сервер не поддерживает SORT, используем локальную сортировку: {e}")
+                # Если SORT не поддерживается, получаем все письма и сортируем локально
+                messages = client.search(['ALL'])
+                # Получаем даты только для нужного диапазона
+                start_idx = max(0, total_count - (offset + limit))
+                end_idx = total_count - offset
+                messages_to_fetch = messages[start_idx:end_idx]
+                
+                # Получаем даты для выбранных сообщений
+                message_dates = {}
+                for msg_id in messages_to_fetch:
+                    try:
+                        raw_email = client.fetch(msg_id, ['INTERNALDATE'])
+                        date = raw_email[msg_id][b'INTERNALDATE']
+                        message_dates[msg_id] = date
+                    except Exception as e:
+                        logger.warning(f"Не удалось получить дату для письма {msg_id}: {e}")
+                        message_dates[msg_id] = datetime.min
+                
+                # Сортируем по дате в обратном порядке
+                messages_to_fetch = sorted(messages_to_fetch, key=lambda x: message_dates.get(x, datetime.min), reverse=True)
+            
+            logger.info(f"Запрашиваем {len(messages_to_fetch)} писем (offset={offset}, limit={limit})")
+            
+            # Получаем детали писем
+            email_data = []
+            for msg_id in messages_to_fetch:
+                try:
+                    # Получаем только необходимые поля
+                    raw_email = client.fetch(msg_id, ['RFC822.HEADER', 'RFC822.TEXT'])
+                    email_obj = email.message_from_bytes(raw_email[msg_id][b'RFC822.HEADER'] + b'\r\n\r\n' + raw_email[msg_id][b'RFC822.TEXT'])
+                    
+                    # Извлекаем содержимое письма
+                    body_content = _extract_email_body(email_obj)
+                    
+                    # Парсим email
+                    email_details = {
+                        'id': msg_id,
+                        'subject': _decode_email_header(email_obj.get('Subject', 'Без темы')),
+                        'from': _decode_email_header(email_obj.get('From', 'Неизвестный отправитель')),
+                        'date': email_obj.get('Date', ''),
+                        'body_plain': body_content['plain'],
+                        'body_html': body_content['html'],
+                        'attachments': body_content['attachments'],
+                        'mailbox': selected_mailbox
+                    }
+                    email_data.append(email_details)
+                except Exception as e:
+                    logger.warning(f"Не удалось обработать письмо {msg_id}: {e}")
+            
+            logger.info(f"Успешно получено {len(email_data)} писем для {user.email}, mailbox: {selected_mailbox}")
+            return email_data, None, total_count
     
-    # Возвращаем None для списка, ошибку и 0 для total_count при ошибке
-    return None, error_info, 0 
+    except UserProfile.DoesNotExist:
+        logger.error(f"Профиль пользователя не найден: {user.email}")
+        return [], (ERR_TYPE_CONFIG, "Профиль пользователя не настроен"), 0
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при получении писем для {user.email}: {e}")
+        return [], (ERR_TYPE_CONNECTION, str(e)), 0
 
 def _connect_and_login(credentials: Dict[str, str]) -> Tuple[Optional[imaplib.IMAP4_SSL], Optional[Tuple[str, str]]]:
     """Подключается и логинится. Возвращает (connection, error)."""
@@ -698,3 +733,81 @@ def list_mailboxes(user) -> Tuple[Optional[List[Dict]], Optional[Tuple[str, str]
             except Exception: pass
     
     return None, error_info # Возвращаем ошибку
+
+def _extract_email_body(email_obj):
+    """
+    Извлекает текстовое содержимое письма с расширенной обработкой.
+    
+    :param email_obj: Объект письма из библиотеки email
+    :return: Словарь с содержимым письма
+    """
+    body_plain = None
+    body_html = None
+    attachments = []
+
+    try:
+        if email_obj.is_multipart():
+            for part in email_obj.walk():
+                content_type = part.get_content_type()
+                content_disposition = str(part.get('Content-Disposition', ''))
+                
+                charset = part.get_content_charset() or 'utf-8'
+
+                # Обработка текстового содержимого
+                if content_type == 'text/plain' and body_plain is None:
+                    try:
+                        payload = part.get_payload(decode=True)
+                        body_plain = payload.decode(charset, errors='replace').strip()
+                    except Exception as e:
+                        logger.warning(f"Ошибка декодирования plain text: {e}")
+
+                # Обработка HTML содержимого
+                elif content_type == 'text/html' and body_html is None:
+                    try:
+                        payload = part.get_payload(decode=True)
+                        body_html = payload.decode(charset, errors='replace').strip()
+                    except Exception as e:
+                        logger.warning(f"Ошибка декодирования HTML: {e}")
+
+                # Обработка вложений
+                if 'attachment' in content_disposition.lower():
+                    filename = part.get_filename()
+                    if filename:
+                        try:
+                            filename = _decode_email_header(filename)
+                            attachments.append({
+                                'filename': filename,
+                                'size': len(part.get_payload(decode=True)),
+                                'content_type': content_type
+                            })
+                        except Exception as e:
+                            logger.warning(f"Ошибка обработки вложения: {e}")
+
+        else:
+            # Обработка простого (не мультипарт) письма
+            content_type = email_obj.get_content_type()
+            charset = email_obj.get_content_charset() or 'utf-8'
+
+            try:
+                payload = email_obj.get_payload(decode=True)
+                if content_type == 'text/plain':
+                    body_plain = payload.decode(charset, errors='replace').strip()
+                elif content_type == 'text/html':
+                    body_html = payload.decode(charset, errors='replace').strip()
+            except Exception as e:
+                logger.warning(f"Ошибка декодирования простого письма: {e}")
+
+        # Возвращаем словарь с содержимым
+        return {
+            'plain': body_plain or '',
+            'html': body_html or '',
+            'attachments': attachments
+        }
+
+    except Exception as e:
+        logger.error(f"Критическая ошибка при извлечении содержимого письма: {e}", exc_info=True)
+        return {
+            'plain': 'Не удалось извлечь содержимое письма',
+            'html': '',
+            'attachments': []
+        }

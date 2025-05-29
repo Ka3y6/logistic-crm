@@ -12,15 +12,16 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import api from '../../api/api';
+import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
+  const { login, error: authError, networkError } = useAuth();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -50,29 +51,15 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     
     try {
-      // Сначала получаем CSRF токен
-      await api.get('csrf/');
-      
-      const response = await api.post('login/', { 
-        email, 
-        password,
-        remember_me: rememberMe 
-      });
-
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        const role = response.data.user.role.toLowerCase();
-        localStorage.setItem('role', role);
-        navigate(`/${role}/dashboard`);
-      } else {
-        setError('Ошибка получения токена');
+      const success = await login(email, password, rememberMe);
+      if (!success) {
+        // Ошибка уже установлена в AuthContext
+        return;
       }
     } catch (err) {
       console.error('Ошибка авторизации:', err);
-      setError(err.response?.data?.error || 'Ошибка авторизации');
     }
   };
 
@@ -115,9 +102,9 @@ const LoginForm = () => {
             Вход в систему
           </Typography>
 
-          {error && (
+          {(authError || networkError) && (
             <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-              {error}
+              {networkError ? 'Ошибка сети. Проверьте подключение к интернету.' : authError}
             </Alert>
           )}
 

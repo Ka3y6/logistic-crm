@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_ratelimit.decorators import ratelimit
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from datetime import datetime
 from django.core.files import File
 import csv
@@ -30,6 +30,9 @@ from .email_service import (
     ERR_TYPE_OPERATION, ERR_TYPE_CONFIG, ERR_TYPE_UNKNOWN, # Импортируем типы ошибок
     list_mailboxes
 )
+from .utils import extract_contact_info, normalize_phone
+from django.middleware.csrf import get_token
+from django.utils.deprecation import MiddlewareMixin
 
 logger = logging.getLogger(__name__)
 
@@ -71,15 +74,36 @@ from .models import (
 )
 from .permissions import IsAdmin, IsManager, IsAdminOrManager
 from .services.document_generator import generate_document
+# from docxtpl import DocxTemplate
 from rest_framework.pagination import PageNumberPagination
 from django.db import models
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from rest_framework.authentication import TokenAuthentication, SessionAuthentication
+from django.contrib.auth import get_user_model
+from .authentication import CustomTokenAuthentication
 
+User = get_user_model()
+
+class RequestLoggingMiddleware(MiddlewareMixin):
+    def process_request(self, request):
+        logger.info(f"Request path: {request.path}")
+        logger.info(f"Request method: {request.method}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"Request user: {request.user}")
+        if hasattr(request, 'auth'):
+            logger.info(f"Request auth: {request.auth}")
+        else:
+            logger.info("Request auth: Not available")
+        return None
+
+    def process_response(self, request, response):
+        logger.info(f"Response status: {response.status_code}")
+        logger.info(f"Response headers: {dict(response.headers)}")
+        return response
 
 @require_GET
 @ensure_csrf_cookie
@@ -88,17 +112,33 @@ def get_csrf_token(request):
     response['X-CSRFToken'] = request.META.get('CSRF_TOKEN')
     return response
 
+@api_view(['GET'])
+def csrf_token(request):
+    token = get_token(request)
+    return Response({'csrfToken': token})
+
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.select_related('client')
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['status', 'transport_type', 'client__id', 'loading_date']
+    filterset_fields = ['status', 'transport_type', 'client__id', 'loading_date', 'created_by']
     search_fields = ['contract_number', 'loading_address', 'unloading_address']
+
+    def get_queryset(self):
+        queryset = Order.objects.all()
+        user = self.request.user
+        
+        # Если передан параметр created_by, фильтруем по нему
+        created_by = self.request.query_params.get('created_by')
+        if created_by:
+            return queryset.filter(created_by=created_by)
+            
+        # Иначе возвращаем заказы текущего пользователя
+        return queryset.filter(created_by=user)
 
     def create(self, request):
         try:
-            # Проверяем номер договора только если он предоставлен
             contract_number = request.data.get('contract_number')
             if contract_number and Order.objects.filter(contract_number=contract_number).exists():
                 return Response(
@@ -106,10 +146,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Создаем заказ
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+            serializer.save(created_by=request.user)
             
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
@@ -186,14 +225,14 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'admin' or user.role == 'manager':
+        if user.role == 'admin':
             return Client.objects.all()
-        return Client.objects.filter(contacts__email=user.email).distinct()
+        return Client.objects.filter(created_by=user)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        serializer.save(created_by=request.user)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -260,91 +299,87 @@ class ClientViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def import_excel(self, request):
+        if 'file' not in request.FILES:
+            return Response({'error': 'Файл не найден'}, status=400)
+            
+        file = request.FILES['file']
+        if not file.name.endswith('.xlsx'):
+            return Response({'error': 'Поддерживаются только файлы .xlsx'}, status=400)
+            
         try:
-            file = request.FILES['file']
             df = pd.read_excel(file)
             
-            # Расширенный словарь соответствия названий столбцов полям модели
+            # Логируем содержимое файла
+            logger.info(f"Содержимое файла {file.name}:")
+            logger.info(f"Колонки: {df.columns.tolist()}")
+            logger.info(f"Первые 5 строк:\n{df.head().to_string()}")
+            
+            # Маппинг колонок Excel в поля модели
             column_mapping = {
-                'id': 'id',
-                'наименование компании': 'company_name',
-                'наименование': 'company_name',
-                'статус': 'status',
-                'направления': 'business_scope',
-                'направление': 'business_scope',
-                'сфера деятельности': 'business_scope',
-                'деятельность': 'business_scope',
-                'наименование товара': 'product_name',
-                'контакты': 'contacts',
-                'адрес': 'address',
-                'юридический адрес': 'address',
-                'реквизиты': 'bank_details',
-                'банковские реквизиты': 'bank_details',
-                'унп': 'unp',
-                'учетный номер плательщика': 'unp',
-                'унн': 'unn',
-                'учетный номер налогоплательщика': 'unn',
-                'окпо': 'okpo',
-                'окпо код': 'okpo',
-                'комментарии': 'comments',
-                'примечания': 'comments',
+                'Наименование компании': 'company_name',
+                'Сфера деятельности': 'business_scope',
+                'Контакты': 'contact_info',
+                'Менеджер': 'manager_name',
+                'Комментарии': 'comments'
             }
             
-            def find_similar_column(column_name, mapping):
-                column_name = str(column_name).strip().lower()
-                if column_name in mapping:
-                    return mapping[column_name]
-                for key in mapping:
-                    if key in column_name or column_name in key:
-                        return mapping[key]
-                return None
+            # Логируем маппинг
+            logger.info(f"Маппинг колонок: {column_mapping}")
             
-            df.columns = [str(col).strip() for col in df.columns]
-            processed_count = 0
-            error_count = 0
-            errors = []
+            # Переименовываем колонки
+            df = df.rename(columns=column_mapping)
             
-            # Получаем список реальных полей модели Client
-            ClientModel = apps.get_model('api', 'Client')
-            client_fields = [f.name for f in ClientModel._meta.get_fields() if not f.is_relation or f.one_to_one or (f.many_to_one and f.related_model)]
+            # Логируем переименованные колонки
+            logger.info(f"Переименованные колонки: {df.columns.tolist()}")
             
+            # Обрабатываем каждую строку
             for idx, row in df.iterrows():
-                try:
-                    update_data = {}
-                    contacts_value = None
-                    for col in df.columns:
-                        field_name = find_similar_column(col, column_mapping)
-                        if field_name:
-                            if field_name == 'contacts':
-                                contacts_value = row[col]
-                            elif field_name in client_fields and pd.notna(row[col]):
-                                update_data[field_name] = row[col]
-                    if update_data:
-                        if 'id' in update_data and update_data['id']:
-                            client, created = Client.objects.update_or_create(
-                                id=update_data['id'],
-                                defaults=update_data
-                            )
-                        else:
-                            client = Client.objects.create(**update_data)
-                        # обработка контактов (если нужно)
-                        # if contacts_value:
-                        #     # здесь добавить логику разбора и добавления контактов
-                        processed_count += 1
-                except Exception as e:
-                    error_count += 1
-                    errors.append(f"Ошибка в строке {idx + 2}: {str(e)}")
-            return Response({
-                'message': f'Импорт завершен. Обработано записей: {processed_count}',
-                'errors': errors if errors else None,
-                'error_count': error_count
-            })
+                # Логируем данные строки
+                logger.info(f"Обработка строки {idx + 2}:")
+                logger.info(f"Данные: {row.to_dict()}")
+                
+                # Создаем или обновляем клиента
+                client_data = {
+                    'company_name': row.get('company_name', ''),
+                    'business_scope': row.get('business_scope', ''),
+                    'comments': row.get('comments', '')
+                }
+                
+                # Очищаем данные от NaN
+                client_data = {k: v if pd.notna(v) else '' for k, v in client_data.items()}
+                
+                # Логируем данные для создания клиента
+                logger.info(f"Данные для создания клиента: {client_data}")
+                
+                # Создаем клиента
+                client = Client.objects.create(**client_data)
+                
+                # Обрабатываем контактную информацию
+                contact_info = row.get('contact_info', '')
+                manager_name = row.get('manager_name', '')
+                
+                if pd.notna(contact_info):
+                    # Парсим контактную информацию
+                    name, phone, email = extract_contact_info(contact_info)
+                    
+                    # Если есть имя менеджера, используем его
+                    if pd.notna(manager_name):
+                        name = manager_name
+                    
+                    if name or phone or email:
+                        ClientContact.objects.create(
+                            client=client,
+                            name=name or '',
+                            phone=phone or '',
+                            email=email or '',
+                            contact_type='manager'
+                        )
+            
+            return Response({'message': 'Импорт успешно завершен'})
+            
         except Exception as e:
-            logger.error(f"Ошибка при импорте клиентов из Excel: {str(e)}")
-            return Response({
-                'error': str(e),
-                'details': 'Проверьте формат файла и названия столбцов'
-            }, status=500)
+            logger.error(f"Ошибка при импорте: {str(e)}")
+            return Response({'error': str(e)}, status=400)
 
 class PaymentPagination(PageNumberPagination):
     page_size = 10
@@ -437,39 +472,25 @@ def system_config(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-@ensure_csrf_cookie
 def login_view(request):
-    serializer = LoginSerializer(data=request.data)
-    if not serializer.is_valid():
+    try:
+        logger.info(f"Login request data: {request.data}")
+        serializer = LoginSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            token, _ = Token.objects.get_or_create(user=user)
+            return Response({
+                'token': token.key,
+                'user': UserSerializer(user).data
+            })
+        logger.warning(f"Login validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    user = authenticate(
-        request,
-        email=serializer.validated_data['email'],
-        password=serializer.validated_data['password']
-    )
-
-    if not user:
-        return Response({"error": "Неверные учетные данные"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    if not user.is_active:
-        return Response({"error": "Учетная запись неактивна"}, status=status.HTTP_403_FORBIDDEN)
-
-    # Удаляем старый токен, если он существует
-    Token.objects.filter(user=user).delete()
-    
-    # Создаем новый токен
-    token = Token.objects.create(user=user)
-    
-    # Сериализуем данные пользователя с помощью ProfileSerializer
-    user_serializer = ProfileSerializer(user)
-    
-    response = Response({
-        "token": token.key,
-        "user": user_serializer.data
-    }, status=status.HTTP_200_OK)
-    
-    return response
+    except Exception as e:
+        logger.error(f"Login error: {str(e)}")
+        return Response(
+            {'error': 'Ошибка при входе в систему'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 # Остальные существующие ViewSets и классы
 class CargoViewSet(viewsets.ModelViewSet):
@@ -624,22 +645,68 @@ class NotificationViewSet(viewsets.ModelViewSet):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def validate_token(request):
+    """Проверка валидности токена"""
     try:
-        user = request.user
+        logger.info(f"Validating token for user: {request.user.email}")
+        
+        # Проверяем заголовок авторизации
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        logger.info(f"Auth header: {auth_header}")
+        logger.info(f"All headers: {request.META}")
+        
+        if not auth_header.startswith('Token '):
+            logger.warning(f"Invalid token format: {auth_header}")
+            return Response(
+                {'error': 'Invalid token format'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+            
+        # Проверяем, что пользователь аутентифицирован
+        if not request.user.is_authenticated:
+            logger.warning(f"User not authenticated: {request.user}")
+            return Response(
+                {'error': 'User not authenticated'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+            
+        # Проверяем токен в базе данных
+        token_key = auth_header.split(' ')[1]
+        try:
+            token = Token.objects.get(key=token_key)
+            if token.user != request.user:
+                logger.warning(f"Token user mismatch: token user {token.user.email} != request user {request.user.email}")
+                return Response(
+                    {'error': 'Token user mismatch'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+        except Token.DoesNotExist:
+            logger.warning(f"Token not found: {token_key}")
+            return Response(
+                {'error': 'Token not found'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+            
+        logger.info(f"User is authenticated: {request.user.is_authenticated}")
+        logger.info(f"User auth: {request.auth}")
+        
+        # Возвращаем информацию о пользователе
         return Response({
             'valid': True,
             'user': {
-                'id': user.id,
-                'email': user.email,
-                'role': user.role.lower(),
-                'username': user.username,
-                'first_name': user.first_name,
-                'last_name': user.last_name
+                'id': request.user.id,
+                'email': request.user.email,
+                'role': request.user.role,
+                'username': request.user.username,
+                'first_name': request.user.first_name,
+                'last_name': request.user.last_name,
             }
         })
     except Exception as e:
-        logger.error(f"Token validation error: {str(e)}")
-        return Response({'valid': False}, status=status.HTTP_401_UNAUTHORIZED)
+        logger.error(f"Error validating token: {str(e)}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -656,12 +723,18 @@ class CarrierViewSet(viewsets.ModelViewSet):
     search_fields = ['company_name', 'working_directions', 'location', 'manager_name', 'director_name']
     ordering_fields = ['company_name', 'created_at']
 
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            return Carrier.objects.all()
+        return Carrier.objects.filter(created_by=user)
+
     def create(self, request, *args, **kwargs):
         logger.info(f"Создание нового перевозчика. Данные: {request.data}")
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+            serializer.save(created_by=request.user)
             headers = self.get_success_headers(serializer.data)
             logger.info(f"Перевозчик успешно создан: {serializer.data}")
             return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -671,18 +744,6 @@ class CarrierViewSet(viewsets.ModelViewSet):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-    def get_queryset(self):
-        logger.info(f"Запрос от пользователя с ролью: {self.request.user.role}")
-        queryset = Carrier.objects.all()
-        if self.request.user.role == 'admin':
-            logger.info("Возвращаем все записи для администратора")
-            return queryset
-        elif self.request.user.role == 'manager':
-            logger.info("Возвращаем все записи для менеджера")
-            return queryset
-        logger.info("Возвращаем пустой queryset")
-        return Carrier.objects.none()
 
     def list(self, request, *args, **kwargs):
         logger.info("Вызов метода list")
@@ -729,74 +790,93 @@ class CarrierViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def import_excel(self, request):
+        if 'file' not in request.FILES:
+            return Response({'error': 'Файл не найден'}, status=400)
+            
+        file = request.FILES['file']
+        if not file.name.endswith('.xlsx'):
+            return Response({'error': 'Поддерживаются только файлы .xlsx'}, status=400)
+            
         try:
-            file = request.FILES['file']
             df = pd.read_excel(file)
             
-            # Расширенный словарь соответствия названий столбцов полям модели
+            # Логируем содержимое файла
+            logger.info(f"Содержимое файла {file.name}:")
+            logger.info(f"Колонки: {df.columns.tolist()}")
+            logger.info(f"Первые 5 строк:\n{df.head().to_string()}")
+            
+            # Маппинг колонок Excel в поля модели
             column_mapping = {
-                'id': 'id',
-                'наименование компании': 'company_name',
-                'наименование': 'company_name',
-                'направления работы': 'working_directions',
-                'направление': 'working_directions',
-                'регион/расположение': 'location',
-                'местоположение': 'location',
-                'автопарк': 'fleet',
-                'комментарии': 'comments',
-                'примечания': 'comments',
-                'известные тарифы': 'known_rates',
-                'тарифы': 'known_rates',
-                'количество тс': 'vehicle_number',
-                'количество автомобилей': 'vehicle_number',
-                'транспортные средства': 'vehicle_number',
-                'автомобили': 'vehicle_number',
+                'Наименование ': 'company_name',
+                'Направления': 'working_directions',
+                'Расположение/Местоположение': 'location',
+                'Парк': 'fleet',
+                'Контактная информация': 'contact_info',
+                'Менеджер': 'manager_name',
+                'comments': 'comments',
+                'Известные тарифы': 'known_rates'
             }
             
-            def find_similar_column(column_name, mapping):
-                column_name = str(column_name).strip().lower()
-                if column_name in mapping:
-                    return mapping[column_name]
-                for key in mapping:
-                    if key in column_name or column_name in key:
-                        return mapping[key]
-                return None
+            # Логируем маппинг
+            logger.info(f"Маппинг колонок: {column_mapping}")
             
-            df.columns = [str(col).strip() for col in df.columns]
-            processed_count = 0
-            error_count = 0
-            errors = []
+            # Переименовываем колонки
+            df = df.rename(columns=column_mapping)
             
+            # Логируем переименованные колонки
+            logger.info(f"Переименованные колонки: {df.columns.tolist()}")
+            
+            # Обрабатываем каждую строку
             for idx, row in df.iterrows():
-                try:
-                    update_data = {}
-                    for col in df.columns:
-                        field_name = find_similar_column(col, column_mapping)
-                        if field_name and pd.notna(row[col]):
-                            update_data[field_name] = row[col]
-                    if update_data:
-                        if 'id' in update_data and update_data['id']:
-                            carrier, created = Carrier.objects.update_or_create(
-                                id=update_data['id'],
-                                defaults=update_data
-                            )
-                        else:
-                            carrier = Carrier.objects.create(**update_data)
-                        processed_count += 1
-                except Exception as e:
-                    error_count += 1
-                    errors.append(f"Ошибка в строке {idx + 2}: {str(e)}")
-            return Response({
-                'message': f'Импорт завершен. Обработано записей: {processed_count}',
-                'errors': errors if errors else None,
-                'error_count': error_count
-            })
+                # Логируем данные строки
+                logger.info(f"Обработка строки {idx + 2}:")
+                logger.info(f"Данные: {row.to_dict()}")
+                
+                # Создаем или обновляем перевозчика
+                carrier_data = {
+                    'company_name': row.get('company_name', ''),
+                    'working_directions': row.get('working_directions', ''),
+                    'location': row.get('location', ''),
+                    'fleet': row.get('fleet', ''),
+                    'comments': row.get('comments', ''),
+                    'known_rates': row.get('known_rates', '')
+                }
+                
+                # Очищаем данные от NaN
+                carrier_data = {k: v if pd.notna(v) else '' for k, v in carrier_data.items()}
+                
+                # Логируем данные для создания перевозчика
+                logger.info(f"Данные для создания перевозчика: {carrier_data}")
+                
+                # Создаем перевозчика
+                carrier = Carrier.objects.create(**carrier_data)
+                
+                # Обрабатываем контактную информацию
+                contact_info = row.get('contact_info', '')
+                manager_name = row.get('manager_name', '')
+                
+                if pd.notna(contact_info):
+                    # Парсим контактную информацию
+                    name, phone, email = extract_contact_info(contact_info)
+                    
+                    # Если есть имя менеджера, используем его
+                    if pd.notna(manager_name):
+                        name = manager_name
+                    
+                    if name or phone or email:
+                        CarrierContact.objects.create(
+                            carrier=carrier,
+                            name=name or '',
+                            phone=phone or '',
+                            email=email or '',
+                            contact_type='manager'
+                        )
+            
+            return Response({'message': 'Импорт успешно завершен'})
+            
         except Exception as e:
-            logger.error(f"Ошибка при импорте перевозчиков из Excel: {str(e)}")
-            return Response({
-                'error': str(e),
-                'details': 'Проверьте формат файла и названия столбцов'
-            }, status=500)
+            logger.error(f"Ошибка при импорте: {str(e)}")
+            return Response({'error': str(e)}, status=400)
 
 class UserSettingsViewSet(viewsets.ModelViewSet):
     queryset = UserSettings.objects.all()
@@ -828,16 +908,41 @@ class UserSettingsViewSet(viewsets.ModelViewSet):
 class CalendarTaskViewSet(viewsets.ModelViewSet):
     queryset = CalendarTask.objects.all()
     serializer_class = CalendarTaskSerializer
+    authentication_classes = [CustomTokenAuthentication, SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'admin' or user.role == 'manager':
-            return CalendarTask.objects.all()
-        return CalendarTask.objects.filter(order__client__contacts__email=user.email).distinct()
+        queryset = CalendarTask.objects.all()
+        user_id = self.request.query_params.get('user')
+        date = self.request.query_params.get('date')
+        
+        if user_id:
+            queryset = queryset.filter(assignee_id=user_id)
+        elif self.request.user.is_authenticated:
+            queryset = queryset.filter(assignee=self.request.user)
+            
+        if date:
+            try:
+                date = datetime.strptime(date, '%Y-%m-%d').date()
+                queryset = queryset.filter(
+                    Q(deadline__date=date) |
+                    Q(created_at__date=date)
+                )
+            except ValueError:
+                pass
+                
+        return queryset.order_by('deadline')
 
     def perform_create(self, serializer):
-        serializer.save()
+        logger.info(f"Creating task with data: {serializer.validated_data}")
+        logger.info(f"Current user: {self.request.user}")
+        logger.info(f"Auth header: {self.request.META.get('HTTP_AUTHORIZATION')}")
+        logger.info(f"All headers: {self.request.META}")
+        
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user, assignee=self.request.user)
+        else:
+            raise permissions.PermissionDenied("Authentication required")
 
 class UserProfileEmailSettingsView(generics.RetrieveUpdateAPIView):
     """
@@ -882,7 +987,8 @@ class EmailMessageListView(APIView):
 
     def get(self, request):
         mailbox = request.query_params.get('mailbox', 'INBOX')
-        logger.debug(f"API GET /email/messages/ вызван для {request.user.email}, mailbox: {mailbox}")
+        logger.info(f"API GET /email/messages/ вызван для {request.user.email}, mailbox: {mailbox}")
+        logger.debug(f"Полные параметры запроса: {request.query_params}")
         
         # Получаем limit и offset с дефолтами и валидацией
         try:
@@ -898,8 +1004,18 @@ class EmailMessageListView(APIView):
         except (ValueError, TypeError):
             offset = 0
 
-        # Вызываем обновленную fetch_emails
-        emails, error, total_count = fetch_emails(request.user, mailbox=mailbox, limit=limit, offset=offset)
+        logger.debug(f"Параметры пагинации: limit={limit}, offset={offset}")
+
+        # Вызываем fetch_emails
+        logger.info(f"Вызов fetch_emails для {request.user.email} с параметрами: mailbox={mailbox}, limit={limit}, offset={offset}")
+        result = fetch_emails(request.user, mailbox=mailbox, limit=limit, offset=offset)
+        
+        # Проверяем количество возвращаемых значений
+        if len(result) == 2:
+            emails, error = result
+            total_count = 0
+        else:
+            emails, error, total_count = result
 
         if error:
             error_type, error_message = error

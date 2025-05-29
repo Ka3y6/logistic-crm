@@ -5,6 +5,7 @@ from django.utils import timezone
 from .encryption_utils import encrypt_data # Импортируем функцию шифрования
 import re
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth import authenticate
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +21,47 @@ class LoginSerializer(serializers.Serializer):
         required=True,
         allow_blank=False
     )
+    remember_me = serializers.BooleanField(required=False, default=False)
+
+    def validate(self, data):
+        logger.info(f"Incoming login data: {data}")
+        logger.info(f"Request data: {self.context.get('request').data}")
+        
+        email = data.get('email')
+        password = data.get('password')
+        
+        if email and password:
+            # Проверяем существование пользователя
+            from .models import CustomUser
+            try:
+                user = CustomUser.objects.get(email=email)
+                logger.info(f"User found: {user.email}")
+            except CustomUser.DoesNotExist:
+                logger.warning(f"No user found with email: {email}")
+                raise serializers.ValidationError('Пользователь не найден')
+            
+            # Проверяем пароль
+            if not user.check_password(password):
+                logger.warning(f"Invalid password for user: {email}")
+                raise serializers.ValidationError('Неверный email или пароль')
+            
+            if not user.is_active:
+                logger.warning(f"Inactive user: {email}")
+                raise serializers.ValidationError('Аккаунт заблокирован')
+            
+            data['user'] = user
+        else:
+            logger.warning("Email and password are required")
+            raise serializers.ValidationError('Email и пароль обязательны')
+        
+        return data
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ('id', 'email', 'role', 'username', 'first_name', 'last_name', 'password')
         extra_kwargs = {
-            'password': {'write_only': True},
+            'password': {'write_only': True, 'required': False},
             'email': {'required': True},
             'role': {'required': True}
         }
@@ -47,10 +82,11 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         try:
             password = validated_data.pop('password', None)
+            if not password:
+                raise serializers.ValidationError("Password is required for new users")
             user = super().create(validated_data)
-            if password:
-                user.set_password(password)
-                user.save()
+            user.set_password(password)
+            user.save()
             return user
         except Exception as e:
             logger.error(f"Error creating user: {str(e)}")
@@ -144,27 +180,35 @@ class OrderSerializer(serializers.ModelSerializer):
     client_id = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.all(),
         source='client',
-        write_only=True
+        write_only=True,
+        required=False,
+        allow_null=True
     )
-    carrier = serializers.PrimaryKeyRelatedField(
+    carrier = serializers.SerializerMethodField()
+    carrier_id = serializers.PrimaryKeyRelatedField(
         queryset=Carrier.objects.all(),
-        required=True
+        source='carrier',
+        write_only=True,
+        required=False,
+        allow_null=True
     )
+    carrier_details = serializers.SerializerMethodField()
+    created_by = UserSerializer(read_only=True)
+    updated_by = UserSerializer(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    payment_status_display = serializers.CharField(source='get_payment_status_display', read_only=True)
     
     class Meta:
         model = Order
         fields = [
-            'id', 'client', 'client_id', 'carrier',
-            'status', 'loading_date', 'loading_address', 'unloading_address', 
-            'transport_type', 'contract_number', 'total_price', 
-            'created_at', 'shipper', 'destination', 'notes', 
-            'payment_status', 'updated_at'
+            'id', 'client', 'client_id', 'carrier', 'carrier_id',
+            'carrier_details', 'status', 'loading_date', 'loading_address', 
+            'unloading_address', 'transport_type', 'contract_number', 
+            'total_price', 'created_at', 'shipper', 'destination', 
+            'payment_status', 'updated_at', 'created_by', 'updated_by',
+            'status_display', 'payment_status_display'
         ]
-        read_only_fields = ('created_at', 'updated_at')
-        extra_kwargs = {
-            'contract_number': {'required': True},
-            'loading_date': {'required': True},
-        }
+        read_only_fields = ('created_at', 'updated_at', 'created_by', 'updated_by')
 
     def get_client(self, obj):
         if obj.client:
@@ -174,15 +218,42 @@ class OrderSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_carrier(self, obj):
+        if obj.carrier:
+            return {
+                'id': obj.carrier.id,
+                'company_name': obj.carrier.company_name
+            }
+        return None
+
+    def get_carrier_details(self, obj):
+        if obj.carrier:
+            return {
+                'id': obj.carrier.id,
+                'company_name': obj.carrier.company_name,
+                'working_directions': obj.carrier.working_directions,
+                'location': obj.carrier.location,
+                'fleet': obj.carrier.fleet,
+                'vehicle_number': obj.carrier.vehicle_number,
+                'contacts': [
+                    {
+                        'name': contact.name,
+                        'phone': contact.phone,
+                        'email': contact.email,
+                        'contact_type': contact.contact_type
+                    }
+                    for contact in obj.carrier.contacts.all()
+                ]
+            }
+        return None
+
     def validate(self, data):
-        # Проверка дат
         if data.get('loading_date') and data.get('delivery_deadline'):
             if data['loading_date'] > data['delivery_deadline']:
                 raise serializers.ValidationError(
                     "Дата погрузки не может быть позже срока доставки"
                 )
 
-        # Проверка адресов
         if not data.get('loading_address') and data.get('client'):
             client = data['client']
             if hasattr(client, 'address') and client.address:
@@ -192,12 +263,21 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
+        
+        # Добавляем информацию о клиенте
+        if instance.client:
+            representation['client'] = {
+                'id': instance.client.id,
+                'company_name': instance.client.company_name
+            }
+        
         # Добавляем информацию о перевозчике
         if instance.carrier:
             representation['carrier'] = {
                 'id': instance.carrier.id,
                 'company_name': instance.carrier.company_name
             }
+        
         return representation
 
 class CargoSerializer(serializers.ModelSerializer):
@@ -348,11 +428,22 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class CalendarTaskSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(read_only=True)
+    assignee = UserSerializer(read_only=True)
+    assignee_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        source='assignee',
+        write_only=True,
+        required=False
+    )
     order = OrderSerializer(read_only=True)
     
     class Meta:
         model = CalendarTask
-        fields = ['id', 'title', 'description', 'deadline', 'priority', 'type', 'order', 'created_by', 'created_at', 'updated_at']
+        fields = [
+            'id', 'title', 'description', 'deadline', 'priority', 
+            'type', 'order', 'created_by', 'assignee', 'assignee_id',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['created_by', 'created_at', 'updated_at']
 
     def validate(self, data):

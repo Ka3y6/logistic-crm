@@ -49,6 +49,18 @@ const EmailListItem = styled(ListItemButton, {
     paddingRight: '100px',
 }));
 
+// Функция для получения правильного имени папки
+const getMailboxName = (name) => {
+  if (name === 'Sent') return '[Gmail]/Отправленные';
+  if (name === 'Trash') return '[Gmail]/Корзина';
+  if (name === 'Drafts') return '[Gmail]/Черновики';
+  if (name === 'Spam') return '[Gmail]/Спам';
+  if (name === 'Starred') return '[Gmail]/Помеченные';
+  if (name === 'Important') return '[Gmail]/Важное';
+  if (name === 'All Mail') return '[Gmail]/Вся почта';
+  return name;
+};
+
 const Email = () => {
   const {
     openComposeModal,
@@ -86,8 +98,11 @@ const Email = () => {
         const offsetToFetch = 0;
         const limitToFetch = 25;
         try {
-          console.log(`Запрос писем (useEffect): mailbox=${selectedMailbox}, limit=${limitToFetch}, offset=${offsetToFetch}`);
-          const response = await api.get(`/email/messages/?mailbox=${encodeURIComponent(selectedMailbox)}&limit=${limitToFetch}&offset=${offsetToFetch}`);
+          const mailboxName = getMailboxName(selectedMailbox);
+          console.log(`Запрос писем (useEffect): mailbox=${mailboxName}, limit=${limitToFetch}, offset=${offsetToFetch}`);
+          const response = await api.get(`/email/messages/?mailbox=${encodeURIComponent(mailboxName)}&limit=${limitToFetch}&offset=${offsetToFetch}`, {
+            timeout: 60000 // Увеличиваем таймаут до 60 секунд
+          });
           const fetchedEmails = response.data.emails || [];
           const totalCount = response.data.total_count || 0;
           console.log(`Получено писем (useEffect): ${fetchedEmails.length}, всего: ${totalCount}`);
@@ -100,7 +115,12 @@ const Email = () => {
 
         } catch (err) {
           console.error("Ошибка загрузки писем (useEffect):", err);
-          const errorMsg = err.response?.data?.error || `Не удалось загрузить письма из папки ${selectedMailbox}`;
+          let errorMsg;
+          if (err.code === 'ECONNABORTED') {
+            errorMsg = 'Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте еще раз.';
+          } else {
+            errorMsg = err.response?.data?.error || `Не удалось загрузить письма из папки ${selectedMailbox}`;
+          }
           setError(errorMsg);
           setSnackbar({ open: true, message: errorMsg, severity: 'error' });
           setHasMoreEmails(false);
@@ -123,21 +143,28 @@ const Email = () => {
 
     try {
       console.log(`Запрос ЕЩЕ писем: mailbox=${selectedMailbox}, limit=${limitToFetch}, offset=${offsetToFetch}`);
-      const response = await api.get(`/email/messages/?mailbox=${encodeURIComponent(selectedMailbox)}&limit=${limitToFetch}&offset=${offsetToFetch}`);
+      const response = await api.get(`/email/messages/?mailbox=${encodeURIComponent(selectedMailbox)}&limit=${limitToFetch}&offset=${offsetToFetch}`, {
+        timeout: 60000 // Увеличиваем таймаут до 60 секунд
+      });
       const fetchedEmails = response.data.emails || [];
 
       console.log(`Получено ЕЩЕ писем: ${fetchedEmails.length}`);
 
       setEmails(prevEmails => [...prevEmails, ...fetchedEmails]);
       setCurrentOffset(prevOffset => {
-          const newOffset = prevOffset + fetchedEmails.length;
-          setHasMoreEmails(newOffset < totalEmails);
-          return newOffset;
+        const newOffset = prevOffset + fetchedEmails.length;
+        setHasMoreEmails(newOffset < totalEmails);
+        return newOffset;
       });
 
     } catch (err) {
       console.error("Ошибка загрузки ЕЩЕ писем:", err);
-      const errorMsg = err.response?.data?.error || `Не удалось загрузить больше писем из папки ${selectedMailbox}`;
+      let errorMsg;
+      if (err.code === 'ECONNABORTED') {
+        errorMsg = 'Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте еще раз.';
+      } else {
+        errorMsg = err.response?.data?.error || `Не удалось загрузить больше писем из папки ${selectedMailbox}`;
+      }
       setSnackbar({ open: true, message: errorMsg, severity: 'error' });
       setHasMoreEmails(false);
     } finally {
@@ -365,8 +392,18 @@ const Email = () => {
 
           <Box sx={{ overflowY: 'auto', flexGrow: 1 }}> 
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', p: 3 }}>
-                <CircularProgress />
+              <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', p: 3 }}>
+                <CircularProgress size={40} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  Загрузка писем...
+                </Typography>
+              </Box>
+            ) : loadingMore ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                  Загрузка дополнительных писем...
+                </Typography>
               </Box>
             ) : emails.length > 0 ? (
               <List disablePadding dense sx={{ pt: 0 }}>

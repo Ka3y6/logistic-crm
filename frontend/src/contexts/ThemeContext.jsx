@@ -52,7 +52,16 @@ export const CustomThemeProvider = ({ children }) => {
   const updateTheme = useCallback((newTheme) => {
     setTheme(newTheme);
     localStorage.setItem('theme', JSON.stringify(newTheme));
-  }, []);
+    
+    // Сохраняем настройки на сервере
+    if (isAuthenticated) {
+      api.put('/user-settings/update_settings/', {
+        theme_settings: newTheme
+      }).catch(error => {
+        console.error('Error saving theme settings to server:', error);
+      });
+    }
+  }, [isAuthenticated]);
 
   const getLogoFilter = useCallback((color) => {
     if (color === '#FFFFFF' || color === '#ffffff') {
@@ -263,16 +272,23 @@ export const CustomThemeProvider = ({ children }) => {
           const response = await api.get('/user-settings/get_settings/');
           if (response.data && response.data.theme_settings) {
             const serverTheme = response.data.theme_settings;
-            updateTheme(serverTheme);
+            // Обновляем локальное хранилище и состояние
+            localStorage.setItem('theme', JSON.stringify(serverTheme));
+            setTheme(serverTheme);
           }
         } catch (error) {
           console.error('Error fetching user settings:', error);
+          // В случае ошибки используем настройки из localStorage
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme) {
+            setTheme(JSON.parse(savedTheme));
+          }
         }
       };
       fetchUserSettings();
       isInitialLoad.current = false;
     }
-  }, [isAuthenticated, authLoading, updateTheme]);
+  }, [isAuthenticated, authLoading]);
 
   return (
     <ThemeContext.Provider value={{ theme, updateTheme }}>
