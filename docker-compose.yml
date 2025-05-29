@@ -2,17 +2,16 @@ version: '3.8'
 
 services:
   db:
-    image: mariadb:10.5
-    container_name: mariadb_db
+    image: postgres:15
+    container_name: postgres_db
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
     environment:
-      MYSQL_DATABASE: greatlineby_crm
-      MYSQL_USER: greatlineby_root
-      MYSQL_PASSWORD: c64s6KPa!
-      MYSQL_ROOT_PASSWORD: c64s6KPa!
+      POSTGRES_DB: logistic_crm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "3306:3306"
+      - "5432:5432"
     restart: unless-stopped
 
   backend:
@@ -28,7 +27,7 @@ services:
     environment:
       - DEBUG=0
       - SECRET_KEY=da2889f63f8140e0a6f342e86de21bec5bb75d2c71d402e9e75670736d63319d
-      - DATABASE_URL=mysql://greatlineby_root:c64s6KPa!@db:3306/greatlineby_crm
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/logistic_crm
       - OPENROUTER_API_KEY=sk-or-v1-d9e2c55b33f2a77696ac62acc988e1
     depends_on:
       - db
@@ -58,7 +57,7 @@ services:
       start_period: 30s
 
 volumes:
-  mariadb_data:
+  postgres_data:
 
 # Не забудьте создать файл .env в корне проекта с переменными:
 # DB_ROOT_PASSWORD=your_strong_root_password

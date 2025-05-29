@@ -8,8 +8,7 @@ django-ratelimit==4.1.0
 python-dotenv==1.0.0
 requests==2.31.0
 huggingface_hub==0.22.2
-mysqlclient==2.2.0
-mysql-connector-python==8.2.0
+psycopg2-binary==2.9.9
 sqlparse>=0.4.4
 cryptography==41.0.3
 openpyxl==3.1.2
