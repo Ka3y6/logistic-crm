@@ -19,9 +19,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend:/app
-      - static_volume:/app/static
-      - media_volume:/app/media
+      - ./backend:/app:delegated
+      - static_volume:/app/static:delegated
+      - media_volume:/app/media:delegated
     environment:
       - DJANGO_SETTINGS_MODULE=logistic_crm.settings
       - DJANGO_SECRET_KEY=da2889f63f8140e0a6f342e86de21bec5bb75d2c71d402e9e75670736d63319d
@@ -34,13 +34,14 @@ services:
       - db
     networks:
       - app_network
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     volumes:
-      - ./frontend:/app
+      - ./frontend:/app:delegated
       - /app/node_modules
     environment:
       - REACT_APP_API_URL=http://localhost:8000/api
@@ -55,13 +56,14 @@ services:
       resources:
         limits:
           memory: 4G
+    restart: unless-stopped
 
   nginx:
     image: nginx:alpine
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - static_volume:/app/static
-      - media_volume:/app/media
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_volume:/app/static:ro
+      - media_volume:/app/media:ro
     ports:
       - "80:80"
       - "443:443"
@@ -70,11 +72,15 @@ services:
       - frontend
     networks:
       - app_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
   static_volume:
+    driver: local
   media_volume:
+    driver: local
 
 networks:
   app_network:
