@@ -19,13 +19,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend:/app:delegated
-      - static_volume:/app/static:delegated
+      - ./backend:/app
+      - static_volume:/app/staticfiles
       - media_volume:/app/media:delegated
     environment:
       - DJANGO_SETTINGS_MODULE=logistic_crm.settings
-      - DJANGO_SECRET_KEY=da2889f63f8140e0a6f342e86de21bec5bb75d2c71d402e9e75670736d63319d
-      - DJANGO_DEBUG=False
+      - DJANGO_SECRET_KEY=your-secret-key
+      - DJANGO_DEBUG=True
       - DATABASE_URL=postgres://greatlineby_root:c64s6KPa!@db:5432/greatlineby_crm
       - EMAIL_ENCRYPTION_KEY=jaj9qouzOs-ACsia3xikjwEvv9es_3lzoKF6Csei8-4=
     ports:
