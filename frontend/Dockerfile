@@ -6,14 +6,17 @@ WORKDIR /app
 # Установка дополнительных зависимостей
 RUN apk add --no-cache python3 make g++
 
-# Копирование файлов зависимостей
+# Копирование только файлов зависимостей
 COPY package*.json ./
 
 # Установка зависимостей
 RUN npm install
 
-# Копирование проекта
-COPY . .
+# Копирование только исходного кода
+COPY src/ ./src/
+COPY public/ ./public/
+COPY tsconfig.json ./
+COPY .env* ./
 
 # Сборка приложения
 ENV NODE_OPTIONS="--max-old-space-size=4096"
