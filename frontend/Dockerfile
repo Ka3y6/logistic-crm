@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Установка дополнительных зависимостей
+RUN apk add --no-cache python3 make g++
+
 # Копирование файлов зависимостей
 COPY package*.json ./
 
@@ -11,7 +14,8 @@ RUN npm install
 # Копирование проекта
 COPY . .
 
-# Сборка приложения
+# Сборка приложения с увеличенным лимитом памяти
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # Установка serve для раздачи статики
