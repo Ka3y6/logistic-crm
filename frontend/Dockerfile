@@ -1,4 +1,5 @@
-FROM node:18-alpine
+# Этап сборки
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -18,8 +19,17 @@ COPY . .
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
-# Установка serve для раздачи статики
-RUN npm install -g serve
+# Этап production
+FROM nginx:alpine
 
-# Запуск приложения
-CMD ["serve", "-s", "build", "-l", "3000"] 
+# Копирование собранного приложения
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Копирование конфигурации nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Открытие порта
+EXPOSE 80
+
+# Запуск nginx
+CMD ["nginx", "-g", "daemon off;"] 
