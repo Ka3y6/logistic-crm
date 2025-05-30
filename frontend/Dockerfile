@@ -13,19 +13,23 @@ COPY package*.json ./
 RUN npm install
 
 # Копирование только исходного кода
-COPY src/ ./src/
-COPY public/ ./public/
-COPY .env* ./
+COPY . .
 
 # Сборка приложения
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
+
+# Проверка наличия собранных файлов
+RUN ls -la build/static
 
 # Этап production
 FROM nginx:alpine
 
 # Копирование собранного приложения
 COPY --from=builder /app/build /usr/share/nginx/html
+
+# Проверка наличия файлов
+RUN ls -la /usr/share/nginx/html/static
 
 # Копирование конфигурации nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
