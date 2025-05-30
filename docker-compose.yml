@@ -3,66 +3,74 @@ version: '3.8'
 services:
   db:
     image: postgres:15
-    container_name: postgres_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: logistic_crm
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - POSTGRES_DB=greatlineby_crm
+      - POSTGRES_USER=greatlineby_root
+      - POSTGRES_PASSWORD=c64s6KPa!
     ports:
       - "5432:5432"
-    restart: unless-stopped
+    networks:
+      - app_network
 
   backend:
-    build: ./backend
-    container_name: django_backend
-    command: python manage.py runserver 0.0.0.0:8000
-    env_file:
-      - ./.env
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     volumes:
       - ./backend:/app
-    ports:
-      - "80:8000"
+      - static_volume:/app/static
+      - media_volume:/app/media
     environment:
-      - DEBUG=0
-      - SECRET_KEY=da2889f63f8140e0a6f342e86de21bec5bb75d2c71d402e9e75670736d63319d
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/logistic_crm
-      - OPENROUTER_API_KEY=sk-or-v1-d9e2c55b33f2a77696ac62acc988e1
+      - DJANGO_SETTINGS_MODULE=logistic_crm.settings
+      - DJANGO_SECRET_KEY=da2889f63f8140e0a6f342e86de21bec5bb75d2c71d402e9e75670736d63319d
+      - DJANGO_DEBUG=False
+      - DATABASE_URL=postgres://greatlineby_root:c64s6KPa!@db:5432/greatlineby_crm
+      - EMAIL_ENCRYPTION_KEY=jaj9qouzOs-ACsia3xikjwEvv9es_3lzoKF6Csei8-4=
+    ports:
+      - "8000:8000"
     depends_on:
       - db
-    restart: unless-stopped
+    networks:
+      - app_network
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.prod
-    container_name: react_frontend
+      dockerfile: Dockerfile
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    ports:
-      - "443:3000"
     environment:
-      - REACT_APP_API_URL=http://185.135.83.113/api
-      - NODE_ENV=production
+      - REACT_APP_API_URL=http://localhost:8000/api
+    ports:
+      - "3000:3000"
     depends_on:
       - backend
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:3000"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
+    networks:
+      - app_network
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - static_volume:/app/static
+      - media_volume:/app/media
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app_network
 
 volumes:
   postgres_data:
+  static_volume:
+  media_volume:
 
-# Не забудьте создать файл .env в корне проекта с переменными:
-# DB_ROOT_PASSWORD=your_strong_root_password
-# DB_NAME=your_db_name
-# DB_USER=your_db_user
-# DB_PASSWORD=your_db_password
-# DJANGO_SECRET_KEY=your_django_secret_key
-# DJANGO_DEBUG=True 
+networks:
+  app_network:
+    driver: bridge 

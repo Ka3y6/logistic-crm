@@ -1,41 +1,25 @@
-# Используем официальный образ Python
-FROM python:3.9-slim
+FROM python:3.11-slim
 
-# Устанавливаем переменные окружения
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Устанавливаем системные зависимости
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
-    pkg-config \
-    libcairo2-dev \
-    libpango1.0-dev \
-    ffmpeg \
-    libsm6 \
-    libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем рабочую директорию
+# Установка рабочей директории
 WORKDIR /app
 
-# Копируем скрипт для миграций
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-# Обновляем pip с явным указанием версии setuptools
-RUN pip install --no-cache-dir --upgrade pip setuptools==69.2.0 wheel
-
-# Копируем файл зависимостей и устанавливаем их
+# Копирование файлов зависимостей
 COPY requirements.txt .
+
+# Установка Python зависимостей
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем остальной код проекта
+# Копирование проекта
 COPY . .
 
-# Открываем порт, на котором будет работать Django (если нужно, но docker-compose уже это делает)
-# EXPOSE 8000
+# Создание директорий для статических файлов и медиа
+RUN mkdir -p /app/static /app/media
 
-# Используем entrypoint для миграций и запуска сервера
-ENTRYPOINT ["/entrypoint.sh"] 
+# Запуск миграций и сбора статических файлов
+CMD ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"] 
