@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-p(76x@#n^k7^le
 DEBUG_STR = os.environ.get('DJANGO_DEBUG', 'True')
 DEBUG = DEBUG_STR.lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '185.135.83.113']
 
 
 # Application definition
@@ -83,6 +83,8 @@ SESSION_COOKIE_HTTPONLY = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://185.135.83.113:3000",
+    "http://185.135.83.113:80",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
