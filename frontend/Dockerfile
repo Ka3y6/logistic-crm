@@ -15,7 +15,6 @@ RUN npm install
 # Копирование только исходного кода
 COPY src/ ./src/
 COPY public/ ./public/
-COPY tsconfig.json ./
 COPY .env* ./
 
 # Сборка приложения
