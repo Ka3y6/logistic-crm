@@ -35,9 +35,6 @@ services:
     networks:
       - app_network
     restart: unless-stopped
-    command: >
-      sh -c "python create_manager.py &&
-             python manage.py runserver 0.0.0.0:8000"
 
   frontend:
     build:
