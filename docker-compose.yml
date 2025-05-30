@@ -44,7 +44,7 @@ services:
       - ./frontend:/app:delegated
       - /app/node_modules
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api
+      - REACT_APP_API_URL=http://backend:8000/api
       - NODE_OPTIONS=--max-old-space-size=4096
     ports:
       - "3000:3000"
