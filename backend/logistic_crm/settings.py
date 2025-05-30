@@ -85,6 +85,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://185.135.83.113:3000",
     "http://185.135.83.113:80",
+    "http://185.135.83.113",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
