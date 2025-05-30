@@ -28,6 +28,7 @@ services:
       - DJANGO_DEBUG=True
       - DATABASE_URL=postgres://greatlineby_root:c64s6KPa!@db:5432/greatlineby_crm
       - EMAIL_ENCRYPTION_KEY=jaj9qouzOs-ACsia3xikjwEvv9es_3lzoKF6Csei8-4=
+      - ALLOWED_HOSTS=185.135.83.113,localhost,127.0.0.1
     ports:
       - "8000:8000"
     depends_on:
@@ -46,7 +47,7 @@ services:
       - ./frontend:/app:delegated
       - frontend_node_modules:/app/node_modules
     environment:
-      - REACT_APP_API_URL=http://backend:8000/api
+      - REACT_APP_API_URL=http://185.135.83.113:8000/api
       - NODE_OPTIONS=--max-old-space-size=4096
     ports:
       - "3000:3000"
