@@ -1,5 +1,5 @@
 # Этап сборки
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
 WORKDIR /app
 
@@ -15,21 +15,8 @@ RUN npm install
 # Копирование проекта
 COPY . .
 
-# Сборка приложения с увеличенным лимитом памяти
-ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN npm run build
-
-# Этап production
-FROM nginx:alpine
-
-# Копирование собранного приложения
-COPY --from=builder /app/build /usr/share/nginx/html
-
-# Копирование конфигурации nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
 # Открытие порта
-EXPOSE 80
+EXPOSE 3000
 
-# Запуск nginx
-CMD ["nginx", "-g", "daemon off;"] 
+# Запуск приложения
+CMD ["npm", "start"] 
