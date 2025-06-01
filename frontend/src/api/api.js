@@ -12,9 +12,9 @@ api.interceptors.request.use(
   (config) => {
     // Удаляем дублирование /api в URL
     if (config.url.startsWith('/api/api/')) {
-      config.url = config.url.replace('/api/api/', '/api/');
-    } else if (!config.url.startsWith('/api/')) {
-      config.url = `/api${config.url}`;
+      config.url = config.url.replace('/api/api/', '/');
+    } else if (config.url.startsWith('/api/')) {
+      config.url = config.url.replace('/api/', '/');
     }
 
     console.log('Request URL:', config.url);

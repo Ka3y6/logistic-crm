@@ -10,7 +10,7 @@ module.exports = function(app) {
       secure: false,
       ws: false,
       pathRewrite: {
-        '^/api/api/(.*)': '/api/$1', // Удаляем дублирование /api
+        '^/api/api/(.*)': '/api/$1', // Полностью удаляем дублирование /api
         '^/api/(.*)': '/api/$1' // Оставляем один /api
       },
       onProxyReq: (proxyReq, req, res) => {
@@ -20,7 +20,7 @@ module.exports = function(app) {
           url: req.url,
           method: req.method,
           headers: req.headers,
-          targetUrl: proxyReq.path
+          targetPath: proxyReq.path
         });
         
         // Устанавливаем заголовки

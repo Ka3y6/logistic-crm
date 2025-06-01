@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setNetworkError(false);
       
-      const response = await api.post('/api/login/', {
+      const response = await api.post('/login/', {
         email,
         password,
         remember_me: rememberMe
