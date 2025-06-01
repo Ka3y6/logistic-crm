@@ -10,15 +10,16 @@ const api = axios.create({
 // Добавляем перехватчик для логирования и добавления токена
 api.interceptors.request.use(
   (config) => {
+    // Удаляем дублирование /api в URL
+    if (config.url.startsWith('/api/api/')) {
+      config.url = config.url.replace('/api/api/', '/api/');
+    } else if (!config.url.startsWith('/api/')) {
+      config.url = `/api${config.url}`;
+    }
+
     console.log('Request URL:', config.url);
     console.log('Base URL:', config.baseURL);
     console.log('Full URL:', config.baseURL + config.url);
-
-    // Если URL начинается с /api/, удаляем этот префикс
-    if (config.url.startsWith('/api/')) {
-      config.url = config.url.replace('/api/', '/');
-      console.log('Adjusted URL:', config.url);
-    }
 
     const token = localStorage.getItem('token');
     if (token) {
