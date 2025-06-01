@@ -1,0 +1,271 @@
+/* CalendarView.css */
+
+/* Общие стили для календаря */
+.rbc-calendar {
+  border-radius: 8px;
+  /* Изменено: полностью убираем все границы */
+  border: none;
+  font-family: 'Tenor Sans', sans-serif !important; /* Применен шрифт Tenor Sans с !important */
+  /* Увеличиваем высоту для лучшего вида */
+  height: calc(100vh - 100px) !important; /* Вы можете настроить высоту */
+}
+
+/* Заголовок (Месяц/Год и кнопки навигации) */
+.rbc-toolbar {
+  padding: 10px 15px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 0 !important; /* Убираем стандартный отступ */
+  font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение */
+}
+
+.rbc-toolbar .rbc-toolbar-label {
+  font-size: 1.3em;
+  font-weight: 500;
+  font-family: 'Tenor Sans', sans-serif !important; /* Уже работает, но для консистентности */
+}
+
+.rbc-toolbar button {
+  border: 1px solid #ccc !important;
+  padding: 5px 10px !important;
+  border-radius: 8px !important; /* Уменьшено закругление */
+  background-color: #f9f9f9 !important;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  /* Более явная тень */
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.15);
+  font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение */
+}
+
+.rbc-toolbar button:hover {
+  background-color: #eee !important;
+  /* Усиленная тень при наведении */
+  box-shadow: 0 4px 7px rgba(0, 0, 0, 0.2);
+}
+
+.rbc-btn-group button.rbc-active {
+  background-color: #e0e0e0 !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Заголовки дней недели */
+.rbc-header {
+  background-color: #f0f2f5;
+  padding: 8px 5px;
+  text-align: center;
+  font-weight: 600;
+  /* Изменено: Увеличена толщина и изменен цвет для лучшей видимости */
+  border-bottom: 2px solid #d0d0d0; 
+  border-left: 1px solid #e0e0e0;
+  font-size: 0.9em;
+  font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение */
+  /* Удалены box-shadow, position и z-index отсюда, тень будет на родителе .rbc-month-header */
+}
+
+.rbc-header:first-child {
+    border-left: none;
+}
+
+/* Стиль для родительского контейнера заголовков дней недели в месяце */
+.rbc-month-header {
+  position: relative; /* Для корректного позиционирования тени и z-index */
+  z-index: 5; /* Чтобы шапка была выше сетки календаря, но ниже модальных окон */
+  /* Более четкая тень для всего блока заголовков */
+  box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.14);
+  /* background-color важен, если дочерние .rbc-header не покрывают всю область или для однородности */
+  /* Если .rbc-header покрывают всю область, можно не указывать, но для надежности добавим такой же, как у детей */
+  background-color: #f0f2f5; 
+  font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение */
+}
+
+/* Новый стиль для выделения Сб и Вс в строке заголовков дней недели (Пн, Вт...) */
+.rbc-month-header > .rbc-header:nth-child(6),
+.rbc-month-header > .rbc-header:nth-child(7) {
+  background-color: #ffe0e0 !important; /* Светло-красный для выходных */
+  /* color: #b71c1c !important; /* Если нужен и другой цвет текста */
+}
+
+/* Ячейки дней (вид Месяц) */
+.rbc-month-view .rbc-day-bg {
+  border-left: 1px solid #eee;
+}
+.rbc-month-view .rbc-day-bg:first-child {
+  border-left: none;
+}
+.rbc-month-row {
+    border-bottom: 1px solid #eee;
+    min-height: 100px; /* Уменьшаем высоту строки */
+}
+.rbc-month-row:last-child {
+    border-bottom: none !important; /* Убираем границу у последней строки */
+}
+
+/* Контейнер для событий в одной ячейке дня */
+.rbc-month-view .rbc-row-segment {
+  position: relative; 
+  display: flex; /* Добавляем flex */
+  flex-direction: column-reverse; /* Располагаем события снизу вверх */
+  /* Чтобы сегмент мог растягиваться и занимать доступное пространство, если нужно */
+  /* flex-grow: 1; */ 
+  /* min-height для сегмента, чтобы было место для событий */
+  /* min-height: 60px; /* Примерно 3 события по 18-20px */
+}
+
+/* Дата в ячейке месяца */
+.rbc-date-cell {
+    padding: 5px;
+    text-align: right;
+    font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение */
+}
+
+.rbc-date-cell button {
+    font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение для цифр дат */
+}
+
+.rbc-date-cell a {
+    color: inherit;
+    text-decoration: none;
+    font-family: 'Tenor Sans', sans-serif !important; /* Прямое применение */
+}
+
+/* Стили для событий календаря - нужно проверить, какой селектор отвечает за текст события */
+.rbc-event-content {
+    font-family: 'Tenor Sans', sans-serif !important; 
+    /* Если после удаления фона .rbc-event текст стал плохо читаем, можно задать цвет здесь, 
+       но лучше управлять этим в CustomEvent.jsx */
+    /* color: #333 !important; */ 
+}
+
+/* Если CustomEvent используется, возможно, нужно стилизовать там */
+/* В CustomEvent.jsx, внутри sx={{...}} для Typography или Box с текстом */
+
+/* Выделение сегодняшнего дня */
+.rbc-today {
+  background-color: #eaf6ff !important;
+}
+
+/* Фон дней вне текущего месяца */
+.rbc-off-range-bg {
+  background-color: #fdfdfd !important;
+}
+.rbc-off-range .rbc-date-cell {
+    opacity: 0.5;
+}
+
+/* Сетка времени (вид Неделя/День) */
+.rbc-time-gutter {
+  border-right: 1px solid #e0e0e0;
+}
+
+.rbc-time-header-content {
+    border-left: 1px solid #e0e0e0;
+}
+.rbc-time-header-content .rbc-header:first-child {
+    border-left: none;
+}
+
+.rbc-time-content {
+    border-top: 1px solid #e0e0e0 !important;
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid #eee;
+  min-height: 40px; /* Стандартная высота таймслота */
+}
+
+.rbc-day-slot .rbc-time-slot {
+    border-top: none !important; /* Убираем лишние верхние границы */
+}
+
+/* Убираем границы между часами, если нужно */
+/* .rbc-time-slot {
+  border-bottom: none !important;
+} */
+
+/* Общие стили для контейнера события */
+.rbc-event {
+  background-color: transparent !important; 
+  border: none !important; 
+  padding: 0 !important; 
+  box-shadow: none !important; 
+}
+
+/* Убираем абсолютное позиционирование для событий в месячном виде, 
+   чтобы react-big-calendar сам управлял их расположением друг под другом. */
+.rbc-month-view .rbc-event {
+  display: none !important; /* Полностью скрываем стандартные плашки событий в месяце */
+}
+
+.rbc-day-slot .rbc-event {
+    /* Стили для событий в day/week view - здесь абсолютное позиционирование не нужно, 
+       библиотека сама их хорошо располагает. 
+       Поэтому специфичное правило для .rbc-month-view .rbc-event выше. */
+    border: none !important; 
+}
+
+/* Вид Повестка дня (Agenda) */
+.rbc-agenda-view table {
+    border-collapse: collapse;
+    width: 100%;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden; /* Чтобы скругление работало */
+}
+.rbc-agenda-view table thead th {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: left;
+}
+.rbc-agenda-view table tbody tr td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+.rbc-agenda-view table tbody tr:last-child td {
+    border-bottom: none;
+}
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell {
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Кастомные классы (если нужны) */
+.custom-day-cell {
+    /* Дополнительные стили для ячейки дня, если dayPropGetter используется для этого класса */
+}
+
+/* Стили для кастомной ячейки даты, если нужны дополнительные помимо sx */
+.rbc-day-bg-custom-filled .rbc-date-cell a, /* Для обычных дней */
+.rbc-day-bg-custom-filled .rbc-date-cell button, /* Для сегодняшнего дня (если он в кнопке) */
+.rbc-day-bg-custom-filled .rbc-date-cell span /* На всякий случай, если номер не в ссылке/кнопке */
+{
+  color: white !important; /* Делаем текст даты белым на нашем цветном фоне */
+  /* Можно добавить text-shadow для лучшей читаемости, если фон светлый */
+  /* text-shadow: 0 0 2px rgba(0,0,0,0.5); */
+}
+
+/* Удаляем неиспользуемые классы, так как стилизация теперь в sx */
+/*
+.custom-date-cell-wrapper-title {
+  font-size: 0.7rem;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px; 
+}
+
+.custom-date-cell-wrapper-more {
+  font-size: 0.65rem;
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+}
+*/
+
+.custom-slot {
+    /* Дополнительные стили для временного слота */
+}
+
+.custom-event-wrapper {
+    /* Дополнительные стили для обертки события */
+} 
