@@ -7,9 +7,13 @@ const api = axios.create({
   },
 });
 
-// Добавляем перехватчик для добавления токена
+// Добавляем перехватчик для логирования и добавления токена
 api.interceptors.request.use(
   (config) => {
+    console.log('Request URL:', config.url);
+    console.log('Base URL:', config.baseURL);
+    console.log('Full URL:', config.baseURL + config.url);
+
     const token = localStorage.getItem('token');
     if (token) {
       // Добавляем префикс "Token" к токену
