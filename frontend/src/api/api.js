@@ -14,6 +14,12 @@ api.interceptors.request.use(
     console.log('Base URL:', config.baseURL);
     console.log('Full URL:', config.baseURL + config.url);
 
+    // Если URL начинается с /api/, удаляем этот префикс
+    if (config.url.startsWith('/api/')) {
+      config.url = config.url.replace('/api/', '/');
+      console.log('Adjusted URL:', config.url);
+    }
+
     const token = localStorage.getItem('token');
     if (token) {
       // Добавляем префикс "Token" к токену
