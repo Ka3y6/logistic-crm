@@ -11,7 +11,8 @@ module.exports = function(app) {
       ws: false,
       pathRewrite: {
         '^/api/api/(.*)': '/api/$1', // Полностью удаляем дублирование /api
-        '^/api/(.*)': '/api/$1' // Оставляем один /api
+        '^/api/(.*)': '/api/$1', // Оставляем один /api
+        '^/(.*)': '/api/$1' // Добавляем /api для любых путей
       },
       onProxyReq: (proxyReq, req, res) => {
         // Логируем детали запроса
