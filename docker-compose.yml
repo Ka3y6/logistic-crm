@@ -1,20 +1,6 @@
 version: '3.8'
 
 services:
-  db:
-    image: mariadb:10.11
-    volumes:
-      - db_data:/var/lib/mysql
-    environment:
-      - MARIADB_ROOT_PASSWORD=c64s6KPa
-      - MARIADB_DATABASE=logistic_crm
-      - MARIADB_USER=greatline_root
-      - MARIADB_PASSWORD=c64s6KPa
-    ports:
-      - "3306:3306"
-    networks:
-      - app_network
-
   backend:
     build:
       context: ./backend
@@ -27,12 +13,10 @@ services:
       - DJANGO_SETTINGS_MODULE=logistic_crm.settings
       - DJANGO_SECRET_KEY=your-secret-key
       - DJANGO_DEBUG=True
-      - DATABASE_URL=postgres://greatlineby_root:c64s6KPa!@db:5432/greatlineby_crm
+      - DATABASE_URL=mysql://greatline_root:c64s6KPa@185.135.83.113:3306/logistic_crm
       - EMAIL_ENCRYPTION_KEY=jaj9qouzOs-ACsia3xikjwEvv9es_3lzoKF6Csei8-4=
     ports:
       - "8000:8000"
-    depends_on:
-      - db
     networks:
       - app_network
     restart: unless-stopped
@@ -78,7 +62,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  db_data:
   static_volume:
   media_volume:
   frontend_node_modules:
