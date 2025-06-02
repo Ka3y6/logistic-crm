@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-p(76x@#n^k7^le
 DEBUG_STR = os.environ.get('DJANGO_DEBUG', 'True')
 DEBUG = DEBUG_STR.lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,backend,db').split(',')
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '185.135.83.113']
 
 
 # Application definition
@@ -70,7 +70,8 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
-    "http://185.135.83.113:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 # Настройки сессий
@@ -79,10 +80,13 @@ SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 
 # Настройки CORS
-CORS_ALLOWED_ORIGINS = os.environ.get(
-    'CORS_ALLOWED_ORIGINS', 
-    'http://localhost:3000,http://localhost:80'
-).split(',')
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://185.135.83.113:3000",
+    "http://185.135.83.113:80",
+    "http://185.135.83.113",
+]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
@@ -176,11 +180,11 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'logistic_crm'),
-        'USER': os.environ.get('DB_USER', 'greatline_root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
+        'NAME': 'logistic_crm',
+        'USER': 'greatline_root',
+        'PASSWORD': 'c64s6KPa',
+        'HOST': '185.135.83.113',
+        'PORT': '3306',
     }
 }
 

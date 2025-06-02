@@ -1,21 +1,16 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function(app) {
-  const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-  const backendHost = new URL(backendUrl).hostname;
-  const backendPort = new URL(backendUrl).port || '8000';
-
   // Прокси для всех запросов к бэкенду
   app.use(
     ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: backendUrl,
+      target: 'http://127.0.0.1:8000',
       changeOrigin: true,
       secure: false,
       ws: false,
       pathRewrite: {
-        '^/api/api/(.*)': '/api/$1', // Удаляем дублирование /api
-        '^/api/(.*)': '/api/$1' // Оставляем один /api
+        '^/api': '/api' // Сохраняем префикс /api
       },
       onProxyReq: (proxyReq, req, res) => {
         // Логируем детали запроса
@@ -29,7 +24,7 @@ module.exports = function(app) {
         
         // Устанавливаем заголовки
         proxyReq.setHeader('X-Forwarded-Proto', 'http');
-        proxyReq.setHeader('X-Forwarded-Host', `${backendHost}:${backendPort}`);
+        proxyReq.setHeader('X-Forwarded-Host', 'localhost:8000');
       },
       onProxyRes: (proxyRes, req, res) => {
         // Логируем ответ
