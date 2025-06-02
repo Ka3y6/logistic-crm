@@ -26,6 +26,8 @@ SYSTEM_PROMPT = """Ты - AI ассистент для CRM системы лог
 
 Всегда отвечай профессионально и по существу."""
 
+referer = os.environ.get('OPENROUTER_REFERER', 'http://localhost:3000')
+
 class OpenRouterClient:
     def __init__(self, user=None):
         self.user = user
@@ -82,7 +84,7 @@ class OpenRouterClient:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://185.135.83.113:3000",
+                "HTTP-Referer": referer,
             }
 
             messages = [{"role": "system", "content": SYSTEM_PROMPT}]
