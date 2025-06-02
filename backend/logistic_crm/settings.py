@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-p(76x@#n^k7^le
 DEBUG_STR = os.environ.get('DJANGO_DEBUG', 'True')
 DEBUG = DEBUG_STR.lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '185.135.83.113']
+ALLOWED_HOSTS = ['185.135.83.113', 'backend', 'db']
 
 
 # Application definition
@@ -70,8 +70,7 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://185.135.83.113:3000",
 ]
 
 # Настройки сессий
@@ -81,8 +80,6 @@ SESSION_COOKIE_HTTPONLY = True
 
 # Настройки CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
     "http://185.135.83.113:3000",
     "http://185.135.83.113:80",
     "http://185.135.83.113",
@@ -179,12 +176,15 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'greatlineby_crm',
-        'USER': 'greatlineby_root',
-        'PASSWORD': 'c64s6KPa!',
-        'HOST': 'db',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'logistic_crm',
+        'USER': 'greatline_root',
+        'PASSWORD': 'c64s6KPa',
+        'HOST': '185.135.83.113',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
+        }
     }
 }
 

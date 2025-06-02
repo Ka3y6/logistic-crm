@@ -15,7 +15,7 @@ services:
       - DJANGO_DEBUG=True
       - DATABASE_URL=mysql://greatline_root:c64s6KPa@185.135.83.113:3306/logistic_crm
       - EMAIL_ENCRYPTION_KEY=jaj9qouzOs-ACsia3xikjwEvv9es_3lzoKF6Csei8-4=
-      - ALLOWED_HOSTS=185.135.83.113,localhost,127.0.0.1
+      - ALLOWED_HOSTS=185.135.83.113
       - PYTHONUNBUFFERED=1
     ports:
       - "8000:8000"

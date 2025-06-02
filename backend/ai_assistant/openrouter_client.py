@@ -82,7 +82,7 @@ class OpenRouterClient:
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
+                "HTTP-Referer": "http://185.135.83.113:3000",
             }
 
             messages = [{"role": "system", "content": SYSTEM_PROMPT}]

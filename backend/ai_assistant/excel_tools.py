@@ -78,7 +78,7 @@ def analyze_data_with_ai(data, model_name):
         
         # Получаем API ключ и referer из настроек
         api_key = os.environ.get('OPENROUTER_API_KEY')
-        referer = os.environ.get('OPENROUTER_REFERER', 'http://localhost:3000')
+        referer = os.environ.get('OPENROUTER_REFERER', 'http://185.135.83.113:3000')
         
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY не найден в переменных окружения")
