@@ -66,21 +66,17 @@ MIDDLEWARE = [
 ]
 
 # Настройки CSRF и сессий
-CSRF_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Strict'
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://185.135.83.113:3000",
-    "http://185.135.83.113:80",
-    "http://185.135.83.113",
-    "https://185.135.83.113",
 ]
 
 # Настройки сессий
-SESSION_COOKIE_SAMESITE = 'Strict'
-SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 
 # Настройки CORS
@@ -90,7 +86,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://185.135.83.113:3000",
     "http://185.135.83.113:80",
     "http://185.135.83.113",
-    "https://185.135.83.113",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -125,25 +120,15 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.OrderingFilter',
-        'rest_framework.filters.SearchFilter',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
         'api.authentication.CustomTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
-    ],
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
-        'rest_framework.parsers.FormParser',
-        'rest_framework.parsers.MultiPartParser'
-    ],
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler'
 }
 
 # Настройки токенов
@@ -194,12 +179,12 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'logistic_crm',
-        'USER': 'greatline_root',
-        'PASSWORD': 'c64s6KPa',
-        'HOST': '185.135.83.113',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'greatlineby_crm',
+        'USER': 'greatlineby_root',
+        'PASSWORD': 'c64s6KPa!',
+        'HOST': 'db',
+        'PORT': '5432',
     }
 }
 

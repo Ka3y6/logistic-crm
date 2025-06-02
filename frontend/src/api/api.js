@@ -1,28 +1,15 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://185.135.83.113/api',
+  baseURL: 'http://localhost:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Добавляем перехватчик для логирования и добавления токена
+// Добавляем перехватчик для добавления токена
 api.interceptors.request.use(
   (config) => {
-    // Удаляем дублирование /api в URL
-    if (config.url.startsWith('/api/api/')) {
-      config.url = config.url.replace('/api/api/', 'api/');
-    } else if (config.url.startsWith('/api/')) {
-      config.url = config.url.replace('/api/', 'api/');
-    } else if (!config.url.startsWith('api/')) {
-      config.url = `api/${config.url}`;
-    }
-
-    console.log('Request URL:', config.url);
-    console.log('Base URL:', config.baseURL);
-    console.log('Full URL:', config.baseURL + config.url);
-
     const token = localStorage.getItem('token');
     if (token) {
       // Добавляем префикс "Token" к токену

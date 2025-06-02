@@ -5,14 +5,12 @@ module.exports = function(app) {
   app.use(
     ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: 'http://185.135.83.113:8000',
+      target: 'http://127.0.0.1:8000',
       changeOrigin: true,
       secure: false,
       ws: false,
       pathRewrite: {
-        '^/api/api/(.*)': '/api/$1', // Полностью удаляем дублирование /api
-        '^/api/(.*)': '/api/$1', // Оставляем один /api
-        '^/(.*)': '/api/$1' // Добавляем /api для любых путей
+        '^/api': '/api' // Сохраняем префикс /api
       },
       onProxyReq: (proxyReq, req, res) => {
         // Логируем детали запроса
@@ -21,12 +19,12 @@ module.exports = function(app) {
           url: req.url,
           method: req.method,
           headers: req.headers,
-          targetPath: proxyReq.path
+          targetUrl: proxyReq.path
         });
         
         // Устанавливаем заголовки
         proxyReq.setHeader('X-Forwarded-Proto', 'http');
-        proxyReq.setHeader('X-Forwarded-Host', '185.135.83.113:8000');
+        proxyReq.setHeader('X-Forwarded-Host', 'localhost:8000');
       },
       onProxyRes: (proxyRes, req, res) => {
         // Логируем ответ

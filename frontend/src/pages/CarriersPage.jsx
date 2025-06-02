@@ -38,10 +38,10 @@ const CarriersPage = () => {
       setError(null);
       const response = await carriersApi.getAll(filters);
       
-      // Унифицированная обработка ответа
-      const carriersData = response.data.results || response.data;
-      if (Array.isArray(carriersData)) {
-        setCarriers(carriersData);
+      if (response.data && Array.isArray(response.data)) {
+        setCarriers(response.data);
+      } else if (response.data && response.data.results && Array.isArray(response.data.results)) {
+        setCarriers(response.data.results);
       } else {
         console.warn('Неожиданный формат данных:', response.data);
         setCarriers([]);
