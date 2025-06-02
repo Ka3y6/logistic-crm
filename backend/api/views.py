@@ -473,24 +473,46 @@ def system_config(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    try:
-        logger.info(f"Login request data: {request.data}")
-        serializer = LoginSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
+    logger.info(f"Login request received: {request.data}")
+    logger.info(f"Request method: {request.method}")
+    logger.info(f"Request headers: {request.headers}")
+    
+    serializer = LoginSerializer(data=request.data)
+    if serializer.is_valid():
+        email = serializer.validated_data.get('email')
+        password = serializer.validated_data.get('password')
+        remember_me = serializer.validated_data.get('remember_me', False)
+        
+        logger.info(f"Attempting to authenticate user: {email}")
+        
+        user = authenticate(request, username=email, password=password)
+        
+        if user is not None:
+            # Создаем или получаем токен
             token, _ = Token.objects.get_or_create(user=user)
+            
+            # Обновляем время последнего входа
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+            
+            # Сериализуем данные пользователя
+            user_serializer = UserSerializer(user)
+            
+            logger.info(f"User {email} authenticated successfully")
+            
             return Response({
                 'token': token.key,
-                'user': UserSerializer(user).data
-            })
-        logger.warning(f"Login validation errors: {serializer.errors}")
+                'user': user_serializer.data,
+                'remember_me': remember_me
+            }, status=status.HTTP_200_OK)
+        else:
+            logger.warning(f"Authentication failed for user: {email}")
+            return Response({
+                'error': 'Неверный email или пароль'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+    else:
+        logger.error(f"Invalid login data: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        logger.error(f"Login error: {str(e)}")
-        return Response(
-            {'error': 'Ошибка при входе в систему'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
 
 # Остальные существующие ViewSets и классы
 class CargoViewSet(viewsets.ModelViewSet):

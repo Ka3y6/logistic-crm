@@ -10,7 +10,8 @@ module.exports = function(app) {
       secure: false,
       ws: false,
       pathRewrite: {
-        '^/api': '/api' // Сохраняем префикс /api
+        '^/api/api/(.*)': '/api/$1', // Удаляем дублирование /api
+        '^/api/(.*)': '/api/$1' // Оставляем один /api
       },
       onProxyReq: (proxyReq, req, res) => {
         // Логируем детали запроса
