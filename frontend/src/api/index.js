@@ -32,13 +32,6 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     
-    // Убедимся, что URL начинается с /api/ для API запросов
-    if (config.url.startsWith('/api/') || config.url === '/csrf-token' || config.url === '/validate-token') {
-      // URL уже правильный
-    } else if (!config.url.startsWith('/api/')) {
-      config.url = '/api' + (config.url.startsWith('/') ? config.url : '/' + config.url);
-    }
-    
     // Добавляем заголовки для CORS
     config.headers['Content-Type'] = 'application/json';
     config.headers['Accept'] = 'application/json';
