@@ -155,7 +155,7 @@ function AIAssistantChat() {
             }
 
             console.log('Sending request to AI Assistant:', {
-                url: 'ai-assistant/query/',
+                url: '/api/ai-assistant/query/',
                 headers: headers,
                 body: {
                     message: userMessage,
@@ -166,7 +166,7 @@ function AIAssistantChat() {
                 }
             });
 
-            const response = await fetch('ai-assistant/query/', {
+            const response = await fetch('/api/ai-assistant/query/', {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({ 

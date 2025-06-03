@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://185.135.83.113:8000',
+  baseURL: 'http://185.135.83.113:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -57,16 +57,16 @@ api.interceptors.response.use(
 export default api;
 
 export const clientsApi = {
-  getAll: (filters = {}) => api.get('clients/', { params: filters }),
-  getById: (id) => api.get(`clients/${id}/`),
-  create: (data) => api.post('clients/', data),
-  update: (id, data) => api.put(`clients/${id}/`, data),
-  delete: (id) => api.delete(`clients/${id}/`),
-  exportExcel: () => api.get('clients/export_excel/', { responseType: 'blob' }),
+  getAll: (filters = {}) => api.get('/clients/', { params: filters }),
+  getById: (id) => api.get(`/clients/${id}/`),
+  create: (data) => api.post('/clients/', data),
+  update: (id, data) => api.put(`/clients/${id}/`, data),
+  delete: (id) => api.delete(`/clients/${id}/`),
+  exportExcel: () => api.get('/clients/export_excel/', { responseType: 'blob' }),
   importExcel: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('clients/import_excel/', formData, {
+    return api.post('/clients/import_excel/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -75,16 +75,16 @@ export const clientsApi = {
 };
 
 export const carriersApi = {
-  getAll: (filters = {}) => api.get('carriers/', { params: filters }),
-  getById: (id) => api.get(`carriers/${id}/`),
-  create: (data) => api.post('carriers/', data),
-  update: (id, data) => api.put(`carriers/${id}/`, data),
-  delete: (id) => api.delete(`carriers/${id}/`),
-  exportExcel: () => api.get('carriers/export_excel/', { responseType: 'blob' }),
+  getAll: (filters = {}) => api.get('/carriers/', { params: filters }),
+  getById: (id) => api.get(`/carriers/${id}/`),
+  create: (data) => api.post('/carriers/', data),
+  update: (id, data) => api.put(`/carriers/${id}/`, data),
+  delete: (id) => api.delete(`/carriers/${id}/`),
+  exportExcel: () => api.get('/carriers/export_excel/', { responseType: 'blob' }),
   importExcel: (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('carriers/import_excel/', formData, {
+    return api.post('/carriers/import_excel/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -93,10 +93,10 @@ export const carriersApi = {
 };
 
 export const documentsApi = {
-  getAll: (filters = {}) => api.get('documents/', { params: filters }),
-  getById: (id) => api.get(`documents/${id}/`),
-  create: (data) => api.post('documents/', data),
-  update: (id, data) => api.put(`documents/${id}/`, data),
-  delete: (id) => api.delete(`documents/${id}/`),
-  download: (id) => api.get(`documents/${id}/?download=true`, { responseType: 'blob' }),
+  getAll: (filters = {}) => api.get('/documents/', { params: filters }),
+  getById: (id) => api.get(`/documents/${id}/`),
+  create: (data) => api.post('/documents/', data),
+  update: (id, data) => api.put(`/documents/${id}/`, data),
+  delete: (id) => api.delete(`/documents/${id}/`),
+  download: (id) => api.get(`/documents/${id}/?download=true`, { responseType: 'blob' }),
 }; 
