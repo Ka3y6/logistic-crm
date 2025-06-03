@@ -1,15 +1,18 @@
 FROM node:18-alpine
 
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
 # Устанавливаем зависимости
-COPY package.json package-lock.json ./
 RUN npm install
 
 # Копируем исходный код
 COPY . .
 
-# Устанавливаем переменные окружения для режима разработки
+# Устанавливаем переменные окружения для разработки
 ENV NODE_ENV=development
 ENV REACT_APP_API_URL=http://185.135.83.113:8000/api
 ENV PORT=3000
@@ -17,8 +20,8 @@ ENV CHOKIDAR_USEPOLLING=true
 ENV WDS_SOCKET_PORT=3000
 ENV WATCHPACK_POLLING=true
 
-# Открываем порт для разработки
+# Открываем порт
 EXPOSE 3000
 
-# Запускаем приложение в режиме разработки с поддержкой hot-reload
+# Запускаем приложение с поддержкой hot-reload
 CMD ["npm", "start"] 

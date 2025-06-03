@@ -2,66 +2,44 @@ version: '3.8'
 
 services:
   backend:
-    build:
+    build: 
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     volumes:
       - ./backend:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media:delegated
+      - backend_deps:/app/venv
     environment:
-      - DJANGO_SETTINGS_MODULE=logistic_crm.settings
-      - DJANGO_SECRET_KEY=your-secret-key
       - DJANGO_DEBUG=True
-      - DATABASE_URL=mysql://greatline_root:c64s6KPa@185.135.83.113:3306/logistic_crm
-      - EMAIL_ENCRYPTION_KEY=jaj9qouzOs-ACsia3xikjwEvv9es_3lzoKF6Csei8-4=
+      - DJANGO_SECRET_KEY=your_secret_key
     ports:
       - "8000:8000"
-    networks:
-      - app_network
-    restart: unless-stopped
+    command: >
+      sh -c "python -m venv venv && 
+             . venv/bin/activate && 
+             pip install -r requirements.txt && 
+             python manage.py migrate && 
+             python manage.py runserver 0.0.0.0:8000"
+    restart: always
 
   frontend:
-    build:
+    build: 
       context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NODE_ENV=production
+      dockerfile: Dockerfile.dev
     volumes:
-      - ./frontend:/app:delegated
-      - frontend_node_modules:/app/node_modules
+      - ./frontend:/app
+      - frontend_deps:/app/node_modules
     environment:
-      - REACT_APP_API_URL=http://backend:8000/api
-      - NODE_OPTIONS=--max-old-space-size=4096
+      - REACT_APP_API_URL=http://185.135.83.113:8000/api
+      - CHOKIDAR_USEPOLLING=true
     ports:
       - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - app_network
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - static_volume:/app/static:ro
-      - media_volume:/app/media:ro
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - app_network
-    restart: unless-stopped
+    command: npm start
+    restart: always
 
 volumes:
+  backend_deps:
+  frontend_deps:
+
   static_volume:
   media_volume:
   frontend_node_modules:
