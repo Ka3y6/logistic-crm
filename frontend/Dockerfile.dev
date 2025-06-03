@@ -6,8 +6,8 @@ WORKDIR /app
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm install
+# Устанавливаем зависимости с кэшированием
+RUN npm install --cache /tmp/npm-cache
 
 # Копируем исходный код
 COPY . .
@@ -19,6 +19,7 @@ ENV PORT=3000
 ENV CHOKIDAR_USEPOLLING=true
 ENV WDS_SOCKET_PORT=3000
 ENV WATCHPACK_POLLING=true
+ENV NODE_OPTIONS=--max_old_space_size=4096
 
 # Открываем порт
 EXPOSE 3000

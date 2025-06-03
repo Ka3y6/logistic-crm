@@ -5,6 +5,8 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile.dev
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     volumes:
       - ./backend:/app
       - backend_deps:/app/venv
@@ -16,25 +18,39 @@ services:
     command: >
       sh -c "python -m venv venv && 
              . venv/bin/activate && 
+             pip install --upgrade pip && 
              pip install -r requirements.txt && 
              python manage.py migrate && 
              python manage.py runserver 0.0.0.0:8000"
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
 
   frontend:
     build: 
       context: ./frontend
       dockerfile: Dockerfile.dev
+      args:
+        - BUILDKIT_INLINE_CACHE=1
     volumes:
       - ./frontend:/app
       - frontend_deps:/app/node_modules
     environment:
       - REACT_APP_API_URL=http://185.135.83.113:8000/api
       - CHOKIDAR_USEPOLLING=true
+      - NODE_OPTIONS=--max_old_space_size=4096
     ports:
       - "3000:3000"
     command: npm start
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
 
 volumes:
   backend_deps:
@@ -45,5 +61,5 @@ volumes:
   frontend_node_modules:
 
 networks:
-  app_network:
+  default:
     driver: bridge 
