@@ -5,7 +5,7 @@ module.exports = function(app) {
   app.use(
     ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: 'http://185.135.83.113:8000',
+      target: 'http://localhost:8000',
       changeOrigin: true,
       secure: false,
       ws: false,
@@ -24,7 +24,7 @@ module.exports = function(app) {
         
         // Устанавливаем заголовки
         proxyReq.setHeader('X-Forwarded-Proto', 'http');
-        proxyReq.setHeader('X-Forwarded-Host', '185.135.83.113:8000');
+        proxyReq.setHeader('X-Forwarded-Host', 'localhost:8000');
       },
       onProxyRes: (proxyRes, req, res) => {
         // Логируем ответ
