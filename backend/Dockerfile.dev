@@ -10,24 +10,25 @@ RUN apt-get update && apt-get install -y \
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем requirements
-COPY requirements.txt .
-
 # Создаем виртуальное окружение
-RUN python -m venv venv && \
-    . venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN python -m venv venv
+
+# Активируем виртуальное окружение
+ENV VIRTUAL_ENV=/app/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Копируем requirements и устанавливаем зависимости
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем весь проект
 COPY . .
 
 # Собираем статические файлы
-RUN . venv/bin/activate && \
-    python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput
 
 # Открываем порт
 EXPOSE 8000
 
 # Команда по умолчанию
-CMD ["/bin/bash", "-c", ". venv/bin/activate && python manage.py runserver 0.0.0.0:8000"] 
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"] 

@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 services:
   backend:
@@ -12,6 +12,7 @@ services:
     environment:
       - DJANGO_DEBUG=True
       - DJANGO_SECRET_KEY=your_secret_key
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend,185.135.83.113
     ports:
       - "8000:8000"
     command: >
@@ -42,6 +43,7 @@ services:
     environment:
       - REACT_APP_API_URL=http://backend:8000/api
       - CHOKIDAR_USEPOLLING=true
+      - NODE_ENV=development
     ports:
       - "3000:3000"
     command: npm start
@@ -68,11 +70,15 @@ services:
       - frontend
     networks:
       - app_network
+    restart: always
 
 volumes:
   backend_deps:
+    driver: local
   frontend_deps:
+    driver: local
   static_volume:
+    driver: local
   media_volume:
   frontend_node_modules:
 
