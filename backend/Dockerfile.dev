@@ -22,6 +22,10 @@ RUN python -m venv venv && \
 # Копируем весь проект
 COPY . .
 
+# Собираем статические файлы
+RUN . venv/bin/activate && \
+    python manage.py collectstatic --noinput
+
 # Открываем порт
 EXPOSE 8000
 
