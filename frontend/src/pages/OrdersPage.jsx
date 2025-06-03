@@ -108,7 +108,7 @@ const OrdersPage = () => {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await api.get('/orders/');
+      const response = await api.get('orders/');
       if (Array.isArray(response.data)) {
         setOrders(response.data);
       } else if (response.data && Array.isArray(response.data.results)) {
@@ -128,7 +128,7 @@ const OrdersPage = () => {
 
   const fetchClients = useCallback(async () => {
     try {
-      const response = await api.get('/clients/');
+      const response = await api.get('clients/');
       if (response.data && Array.isArray(response.data.results)) {
         setClients(response.data.results);
       } else if (Array.isArray(response.data)) {
@@ -145,7 +145,7 @@ const OrdersPage = () => {
 
   const fetchCarriers = useCallback(async () => {
     try {
-      const response = await api.get('/carriers/');
+      const response = await api.get('carriers/');
       if (response.data && Array.isArray(response.data.results)) {
         setCarriers(response.data.results);
       } else if (Array.isArray(response.data)) {
@@ -268,7 +268,7 @@ const OrdersPage = () => {
 
   const handleEditOrder = async (order) => {
     try {
-      const response = await api.get(`/orders/${order.id}/`);
+      const response = await api.get(`orders/${order.id}/`);
       const orderData = response.data;
       
       setSelectedOrder(orderData);
@@ -283,7 +283,7 @@ const OrdersPage = () => {
   const handleDeleteOrder = async (orderId) => {
     if (window.confirm('Вы уверены, что хотите удалить этот заказ?')) {
       try {
-        await api.delete(`/orders/${orderId}/`);
+        await api.delete(`orders/${orderId}/`);
         await fetchOrders();
       } catch (error) {
         console.error('Ошибка при удалении заказа:', error);
@@ -314,11 +314,11 @@ const OrdersPage = () => {
       let orderResponse = null;
 
       if (isEditMode && selectedOrder) {
-        orderResponse = await api.put(`/orders/${selectedOrder.id}/`, payload);
+        orderResponse = await api.put(`orders/${selectedOrder.id}/`, payload);
         createdOrderData = orderResponse.data;
         setSuccess('Заказ успешно обновлен.');
       } else {
-        orderResponse = await api.post('/orders/', payload);
+        orderResponse = await api.post('orders/', payload);
         createdOrderData = orderResponse.data;
         setSuccess('Заказ успешно создан.');
 
@@ -399,7 +399,7 @@ const OrdersPage = () => {
     if (!selectedOrderId || !selectedStatusType) return;
 
     try {
-      const response = await api.get(`/orders/${selectedOrderId}/`);
+      const response = await api.get(`orders/${selectedOrderId}/`);
       const currentOrder = response.data;
       
       const updatedOrder = {
@@ -415,7 +415,7 @@ const OrdersPage = () => {
          delete updatedOrder.carrier;
       }
       
-      await api.put(`/orders/${selectedOrderId}/`, updatedOrder);
+      await api.put(`orders/${selectedOrderId}/`, updatedOrder);
       await fetchOrders();
       setSuccess('Статус успешно обновлен');
       
@@ -671,7 +671,7 @@ const OrdersPage = () => {
       setLoading(true);
       // Удаляем заказы последовательно
       for (const orderId of orderIds) {
-        await api.delete(`/orders/${orderId}/`);
+        await api.delete(`orders/${orderId}/`);
       }
       
       // Обновляем список заказов
