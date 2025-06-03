@@ -34,7 +34,7 @@ const SiteRequestsPage = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await api.get('/api/site-requests/requests/');
+      const response = await api.get('site-requests/requests/');
       setRequests(response.data);
     } catch (error) {
       console.error('Ошибка при загрузке заявок:', error);
@@ -49,7 +49,7 @@ const SiteRequestsPage = () => {
 
   const handleProcess = async (id) => {
     try {
-      await api.post(`/api/site-requests/requests/${id}/process/`);
+      await api.post(`site-requests/requests/${id}/process/`);
       fetchRequests();
     } catch (error) {
       console.error('Ошибка при обработке заявки:', error);
@@ -58,7 +58,7 @@ const SiteRequestsPage = () => {
 
   const handleComplete = async (id) => {
     try {
-      await api.post(`/api/site-requests/requests/${id}/complete/`);
+      await api.post(`site-requests/requests/${id}/complete/`);
       fetchRequests();
     } catch (error) {
       console.error('Ошибка при завершении заявки:', error);
@@ -67,7 +67,7 @@ const SiteRequestsPage = () => {
 
   const handleReject = async (id) => {
     try {
-      await api.post(`/api/site-requests/requests/${id}/reject/`);
+      await api.post(`site-requests/requests/${id}/reject/`);
       fetchRequests();
     } catch (error) {
       console.error('Ошибка при отклонении заявки:', error);
