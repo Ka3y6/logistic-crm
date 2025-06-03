@@ -22,6 +22,8 @@ var/
 
 # Django
 *.log
+*.pot
+*.pyc
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -52,4 +54,22 @@ docker-compose.override.yml
 
 # System
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# React
+frontend/node_modules/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Backup
+*.bak
+*.gho
+*.ori
+*.orig
+*.tmp 

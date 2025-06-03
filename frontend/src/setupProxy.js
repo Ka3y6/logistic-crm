@@ -9,9 +9,6 @@ module.exports = function(app) {
       changeOrigin: true,
       secure: false,
       ws: false,
-      pathRewrite: {
-        '^/api': '' // Убираем префикс /api
-      },
       onProxyReq: (proxyReq, req, res) => {
         // Логируем детали запроса
         console.log('Proxy Request Details:', {
