@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://185.135.83.113:8000/api',
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -99,4 +99,27 @@ export const documentsApi = {
   update: (id, data) => api.put(`/documents/${id}/`, data),
   delete: (id) => api.delete(`/documents/${id}/`),
   download: (id) => api.get(`/documents/${id}/?download=true`, { responseType: 'blob' }),
-}; 
+};
+
+export const financialReportApi = {
+  getReport: (filters = {}) => api.get('/financial-report/', { params: filters }),
+};
+
+export const systemApi = {
+  getConfig: () => api.get('/system/config/'),
+};
+
+export const profileApi = {
+  getEmailSettings: () => api.get('/profile/email-settings/'),
+  updateEmailSettings: (data) => api.put('/profile/email-settings/', data),
+};
+
+export const emailApi = {
+  getAllMessages: (filters = {}) => api.get('/email/messages/', { params: filters }),
+  sendMessage: (data) => api.post('/email/messages/send/', data),
+  performAction: (data) => api.post('/email/messages/action/', data),
+};
+
+export const aiAssistantApi = {
+  sendMessage: (data) => api.post('/ai-assistant/', data),
+};
