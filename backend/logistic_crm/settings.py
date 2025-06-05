@@ -22,13 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-p(76x@#n^k7^le*9t&!gc^r^oo#nqj_j4h9_^4oj$u*676)u7+')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-p(76x@#n^k7^le*9t&!gc^r^oo#nqj_j4h9_^4oj$u*676)u7+')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG_STR = os.environ.get('DJANGO_DEBUG', 'True')
-DEBUG = DEBUG_STR.lower() in ('true', '1', 't')
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'backend', '185.135.83.113']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,185.135.83.113').split(',')
 
 
 # Application definition
@@ -180,11 +179,11 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'logistic_crm',
-        'USER': 'greatline_root',
-        'PASSWORD': 'c64s6KPa',
-        'HOST': '185.135.83.113',
-        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME', 'logistic_crm'),
+        'USER': os.environ.get('DB_USER', 'greatline_root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'c64s6KPa'),
+        'HOST': os.environ.get('DB_HOST', '185.135.83.113'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
     }
 }
 
@@ -277,5 +276,13 @@ LOGGING = {
         },
     },
 }
+
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
 
 
