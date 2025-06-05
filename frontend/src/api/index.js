@@ -1,5 +1,4 @@
 import axios from 'axios';
-import api from './api';
 
 // Убедимся, что всегда используется HTTP и правильный путь API
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://185.135.83.113:8000';
