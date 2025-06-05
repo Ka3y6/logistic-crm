@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { MoreVert as MoreVertIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../api/api';
 import CarrierForm from '../components/carriers/CarrierForm';
 import DataTable from '../components/common/DataTable';
 import CarrierCard from '../components/carriers/CarrierCard';

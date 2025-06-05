@@ -26,7 +26,7 @@ import {
   ColorLens as ColorLensIcon,
   DeleteSweep as DeleteSweepIcon
 } from '@mui/icons-material';
-import api from '../../api';
+import api from '../../api/api';
 import { predefinedColors } from '../../constants/colors'; // Импортируем константу
 
 // Определяем цвета радуги + белый/серый

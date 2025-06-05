@@ -43,7 +43,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
+import api from '../api/api';
 import OrderForm from '../components/orders/OrderForm';
 import DataTable from '../components/common/DataTable';
 import OrderCard from '../components/orders/OrderCard';

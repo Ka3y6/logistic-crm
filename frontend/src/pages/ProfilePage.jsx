@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { PhotoCamera } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../api';
+import api from '../api/api';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();

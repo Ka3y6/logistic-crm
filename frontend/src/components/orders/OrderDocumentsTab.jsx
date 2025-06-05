@@ -26,7 +26,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
 import { renderAsync } from 'docx-preview';
 import { OutTable, ExcelRenderer } from 'react-excel-renderer';
-import api from '../../api';
+import api from '../../api/api';
 
 const OrderDocumentsTab = ({ orderId }) => {
   const [documents, setDocuments] = useState([]);

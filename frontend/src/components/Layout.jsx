@@ -5,7 +5,7 @@ import TopNavbar from './layout/TopNavbar';
 import { useTheme as useCustomTheme } from '../contexts/ThemeContext';
 import { useEmail } from '../contexts/EmailContext';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../api';
+import api from '../api/api';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import AttachFileIcon from '@mui/icons-material/AttachFile';

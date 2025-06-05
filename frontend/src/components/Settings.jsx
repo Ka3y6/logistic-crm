@@ -19,7 +19,7 @@ import {
 import { ChromePicker } from 'react-color';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../api';
+import api from '../api/api';
 
 const Settings = () => {
     const { theme, updateTheme } = useTheme();

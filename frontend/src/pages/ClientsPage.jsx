@@ -12,7 +12,7 @@ import {
   Container,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
-import api from '../api';
+import api from '../api/api';
 import ClientList from '../components/clients/ClientList';
 import { clientsApi } from '../api/api';
 

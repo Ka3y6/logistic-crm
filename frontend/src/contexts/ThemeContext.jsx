@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
-import api from '../api';
+import api from '../api/api';
 import { useAuth } from './AuthContext';
 
 export const ThemeContext = createContext();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../api';
+import api from '../api/api';
 import {
   Box,
   Typography,

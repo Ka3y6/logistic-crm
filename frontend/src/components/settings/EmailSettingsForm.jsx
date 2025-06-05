@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, TextField, Button, Typography, Switch, FormControlLabel, Grid, CircularProgress, Alert } from '@mui/material';
-import api from '../../api'; // Убедитесь, что путь к api правильный
+import api from '../../api/api'; // Убедитесь, что путь к api правильный
 
 const EmailSettingsForm = () => {
     const [settings, setSettings] = useState({

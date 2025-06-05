@@ -11,7 +11,7 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
-import api from '../../api';
+import api from '../../api/api';
 
 const DocumentGenerator = ({ order }) => {
   const [documentType, setDocumentType] = useState('');
