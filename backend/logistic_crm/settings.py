@@ -242,10 +242,6 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
     },
     'handlers': {
         'console': {
@@ -254,22 +250,17 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': 'logs/django.log',
             'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'api': {
-            'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,
         },
-        'rest_framework_simplejwt': {
+        'api': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,

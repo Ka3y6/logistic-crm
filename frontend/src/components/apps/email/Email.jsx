@@ -16,8 +16,8 @@ import { useEmail } from '../../../contexts/EmailContext';
 
 const mailboxes = [
   { name: 'INBOX', label: 'Входящие', icon: <InboxIcon fontSize="small" /> },
-  { name: 'Sent', label: 'Отправленные', icon: <SendIcon fontSize="small" /> }, 
-  { name: 'Trash', label: 'Корзина', icon: <DeleteSweepIcon fontSize="small" /> },
+  { name: 'INBOX.Sent', label: 'Отправленные', icon: <SendIcon fontSize="small" /> }, 
+  { name: 'INBOX.Trash', label: 'Корзина', icon: <DeleteSweepIcon fontSize="small" /> },
 ];
 
 const StyledListItemText = styled(ListItemText)({
@@ -51,13 +51,6 @@ const EmailListItem = styled(ListItemButton, {
 
 // Функция для получения правильного имени папки
 const getMailboxName = (name) => {
-  if (name === 'Sent') return '[Gmail]/Отправленные';
-  if (name === 'Trash') return '[Gmail]/Корзина';
-  if (name === 'Drafts') return '[Gmail]/Черновики';
-  if (name === 'Spam') return '[Gmail]/Спам';
-  if (name === 'Starred') return '[Gmail]/Помеченные';
-  if (name === 'Important') return '[Gmail]/Важное';
-  if (name === 'All Mail') return '[Gmail]/Вся почта';
   return name;
 };
 
