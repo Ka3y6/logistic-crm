@@ -254,96 +254,112 @@ def fetch_emails(user_email, mailbox='INBOX', limit=25, offset=0):
 
         # Пробуем выбрать папку
         selected_mailbox = None
-        for variant in mailbox_variants:
+        for mailbox_name in mailbox_variants:
             try:
-                logger.info(f"Попытка выбора папки '{variant}' для {user_email}")
-                status, data = imap_server.select(variant)
+                logger.info(f"Попытка выбора папки '{mailbox_name}' для {user_email}")
+                status, data = imap_server.select(mailbox_name)
                 if status == 'OK':
-                    selected_mailbox = variant
-                    logger.info(f"Успешно выбрана папка '{variant}' для {user_email}")
+                    selected_mailbox = mailbox_name
+                    logger.info(f"Успешно выбрана папка '{selected_mailbox}' для {user_email}")
                     break
-            except imaplib.IMAP4.error as e:
-                logger.warning(f"Не удалось выбрать папку '{variant}': {str(e)}")
+            except Exception as e:
+                logger.debug(f"Не удалось выбрать папку '{mailbox_name}': {str(e)}")
                 continue
 
         if not selected_mailbox:
-            logger.error(f"Не удалось выбрать папку {mailbox} ни в одном варианте")
-            raise EmailError(ERR_TYPE_MAILBOX, f"Не удалось выбрать папку {mailbox} ни в одном варианте")
+            raise EmailError(ERR_TYPE_MAILBOX, f"Не удалось выбрать папку {mailbox}")
 
-        # Получаем общее количество писем
-        messages = imap_server.search(['ALL'])
-        total_count = len(messages)
-        logger.info(f"Найдено {total_count} писем в папке {selected_mailbox}")
-        
-        # Получаем только последние письма, отсортированные по дате
-        # Используем IMAP SORT для сортировки на стороне сервера
+        # Получаем список писем
         try:
-            # Пробуем использовать SORT, если сервер поддерживает
-            sorted_messages = imap_server.sort(['REVERSE DATE'], ['ALL'])
-            # Берем только нужный диапазон писем
-            start_idx = offset
-            end_idx = min(offset + limit, total_count)
-            messages_to_fetch = sorted_messages[start_idx:end_idx]
-        except Exception as e:
-            logger.warning(f"Сервер не поддерживает SORT, используем локальную сортировку: {e}")
-            # Если SORT не поддерживается, получаем все письма и сортируем локально
-            messages = imap_server.search(['ALL'])
-            # Получаем даты только для нужного диапазона
-            start_idx = max(0, total_count - (offset + limit))
-            end_idx = total_count - offset
-            messages_to_fetch = messages[start_idx:end_idx]
-            
-            # Получаем даты для выбранных сообщений
-            message_dates = {}
-            for msg_id in messages_to_fetch:
-                try:
-                    raw_email = imap_server.fetch(msg_id, ['INTERNALDATE'])
-                    date = raw_email[msg_id][b'INTERNALDATE']
-                    message_dates[msg_id] = date
-                except Exception as e:
-                    logger.warning(f"Не удалось получить дату для письма {msg_id}: {e}")
-                    message_dates[msg_id] = datetime.min
-            
-            # Сортируем по дате в обратном порядке
-            messages_to_fetch = sorted(messages_to_fetch, key=lambda x: message_dates.get(x, datetime.min), reverse=True)
-        
-        logger.info(f"Запрашиваем {len(messages_to_fetch)} писем (offset={offset}, limit={limit})")
-        
-        # Получаем детали писем
-        email_data = []
-        for msg_id in messages_to_fetch:
-            try:
-                # Получаем только необходимые поля
-                raw_email = imap_server.fetch(msg_id, ['RFC822.HEADER', 'RFC822.TEXT'])
-                email_obj = email.message_from_bytes(raw_email[msg_id][b'RFC822.HEADER'] + b'\r\n\r\n' + raw_email[msg_id][b'RFC822.TEXT'])
-                
-                # Извлекаем содержимое письма
-                body_content = _extract_email_body(email_obj)
-                
-                # Парсим email
-                email_details = {
-                    'id': msg_id,
-                    'subject': _decode_email_header(email_obj.get('Subject', 'Без темы')),
-                    'from': _decode_email_header(email_obj.get('From', 'Неизвестный отправитель')),
-                    'date': email_obj.get('Date', ''),
-                    'body_plain': body_content['plain'],
-                    'body_html': body_content['html'],
-                    'attachments': body_content['attachments'],
-                    'mailbox': selected_mailbox
-                }
-                email_data.append(email_details)
-            except Exception as e:
-                logger.warning(f"Не удалось обработать письмо {msg_id}: {e}")
-        
-        logger.info(f"Успешно получено {len(email_data)} писем для {user_email}, mailbox: {selected_mailbox}")
-        return email_data, None, total_count
+            status, messages = imap_server.search(None, 'ALL')
+            if status != 'OK':
+                raise EmailError(ERR_TYPE_OPERATION, "Ошибка поиска писем")
 
-    except UserProfile.DoesNotExist:
-        logger.error(f"Профиль пользователя не найден: {user_email}")
-        return [], (ERR_TYPE_CONFIG, "Профиль пользователя не настроен"), 0
+            # Получаем список ID писем
+            email_ids = messages[0].split()
+            total_emails = len(email_ids)
+            logger.info(f"Найдено {total_emails} писем в папке {selected_mailbox}")
+
+            # Применяем пагинацию
+            start_idx = max(0, total_emails - offset - limit)
+            end_idx = max(0, total_emails - offset)
+            email_ids = email_ids[start_idx:end_idx]
+            logger.info(f"Запрашиваем {len(email_ids)} писем (offset={offset}, limit={limit})")
+
+            # Получаем письма
+            emails = []
+            for email_id in email_ids:
+                try:
+                    # Преобразуем email_id в строку, если это байты
+                    email_id_str = email_id.decode() if isinstance(email_id, bytes) else str(email_id)
+                    
+                    status, msg_data = imap_server.fetch(email_id, '(RFC822)')
+                    if status != 'OK':
+                        continue
+
+                    raw_email = msg_data[0][1]
+                    msg = email.message_from_bytes(raw_email)
+                    
+                    # Получаем заголовки
+                    subject = decode_header(msg.get('Subject', ''))[0]
+                    subject = subject[0].decode(subject[1] or 'utf-8') if isinstance(subject[0], bytes) else subject[0]
+                    
+                    from_addr = decode_header(msg.get('From', ''))[0]
+                    from_addr = from_addr[0].decode(from_addr[1] or 'utf-8') if isinstance(from_addr[0], bytes) else from_addr[0]
+                    
+                    date = msg.get('Date', '')
+                    try:
+                        date = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %z').isoformat()
+                    except:
+                        date = datetime.now().isoformat()
+
+                    # Получаем тело письма
+                    body = ""
+                    if msg.is_multipart():
+                        for part in msg.walk():
+                            if part.get_content_type() == "text/plain":
+                                try:
+                                    body = part.get_payload(decode=True).decode()
+                                except:
+                                    body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                                break
+                    else:
+                        try:
+                            body = msg.get_payload(decode=True).decode()
+                        except:
+                            body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+
+                    emails.append({
+                        'id': email_id_str,
+                        'subject': subject,
+                        'from': from_addr,
+                        'date': date,
+                        'body': body,
+                        'mailbox': selected_mailbox
+                    })
+                except Exception as e:
+                    logger.error(f"Ошибка при обработке письма {email_id}: {str(e)}")
+                    continue
+
+            logger.info(f"Успешно получено {len(emails)} писем для {user_email}, mailbox: {selected_mailbox}")
+            return {
+                'emails': emails,
+                'total': total_emails,
+                'mailbox': selected_mailbox
+            }
+
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при получении писем для {user_email}: {str(e)}")
+            raise EmailError(ERR_TYPE_OPERATION, f"Ошибка получения писем: {str(e)}")
+
     except Exception as e:
-        logger.error(f"Неожиданная ошибка при получении писем для {user_email}: {e}")
-        return [], (ERR_TYPE_CONNECTION, str(e)), 0
+        logger.error(f"Неожиданная ошибка при получении писем для {user_email}: {str(e)}")
+        raise EmailError(ERR_TYPE_UNKNOWN, f"Неожиданная ошибка: {str(e)}")
+    finally:
+        try:
+            imap_server.logout()
+        except:
+            pass
 
 def _connect_and_login(credentials: Dict[str, str]) -> Tuple[Optional[imaplib.IMAP4_SSL], Optional[Tuple[str, str]]]:
     """Подключается и логинится. Возвращает (connection, error)."""
