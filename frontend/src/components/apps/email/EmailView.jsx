@@ -14,8 +14,7 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
   const [actionLoading, setActionLoading] = React.useState(false);
   const [actionError, setActionError] = React.useState('');
 
-  // Если email не передан (например, при первоначальной загрузке или после сброса), ничего не рендерим
-  // Родительский компонент должен показывать заглушку
+  // Если email не передан, ничего не рендерим
   if (!email) {
     return null;
   }
@@ -23,8 +22,13 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
   const formatDate = (isoDateString) => {
     if (!isoDateString) return 'Неизвестная дата';
     try {
-      // Используем более компактный формат
-      return new Date(isoDateString).toLocaleTimeString('ru-RU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return new Date(isoDateString).toLocaleTimeString('ru-RU', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
     } catch (e) {
       return 'Неверная дата';
     }
@@ -34,24 +38,26 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
     setActionLoading(true);
     setActionError('');
     try {
-        // Используем правильный mailbox из email объекта, если он там есть, иначе можно передать его как проп
-        const mailbox = email.mailbox || 'INBOX'; // Примерное предположение, нужно проверить
-        await api.post('/email/messages/action/', { action: action, email_ids: [email.id], mailbox: mailbox });
-        if (onActionComplete) {
-             onActionComplete(); // Вызываем коллбэк для обновления списка и сброса view
-        }
-        // onCloseView() больше не нужен здесь, его вызывает родитель из onActionComplete
+      const mailbox = email.mailbox || 'INBOX';
+      await api.post('/email/messages/action/', { 
+        action: action, 
+        email_ids: [email.id], 
+        mailbox: mailbox 
+      });
+      if (onActionComplete) {
+        onActionComplete();
+      }
     } catch (err) {
-         console.error(`Ошибка при выполнении действия ${action}:`, err);
-         setActionError(`Не удалось выполнить действие ${action}. ${err.response?.data?.error || 'Попробуйте позже.'}`);
+      console.error(`Ошибка при выполнении действия ${action}:`, err);
+      setActionError(`Не удалось выполнить действие ${action}. ${err.response?.data?.error || 'Попробуйте позже.'}`);
     } finally {
-        setActionLoading(false);
+      setActionLoading(false);
     }
   };
 
-  // Определяем, какое тело использовать
+  // Определяем содержимое письма
   const bodyContent = email.body || '';
-  const isHtml = email.is_html || false;
+  const isHtml = Boolean(email.is_html);
 
   return (
     // Используем Box вместо Dialog
@@ -113,7 +119,7 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
                  {email.to && <Typography variant="caption" color="text.secondary">Кому: {email.to}</Typography>}
               </Box>
               <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'right', flexShrink: 0, ml: 1 }}>
-                {formatDate(email.date_iso || email.date)} {/* Используем date_iso если есть */}
+                {formatDate(email.date)}
               </Typography>
           </Box>
       </Paper>
@@ -130,17 +136,25 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
           </Box>
         )}
 
-        {isHtml ? (
-          <Box 
-             sx={{ '& img': { maxWidth: '100%', height: 'auto' }, wordBreak: 'break-word' }}
-             dangerouslySetInnerHTML={{ __html: bodyContent }} 
-          />
-        ) : bodyContent ? (
-          <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-             {bodyContent}
-          </Typography>
+        {bodyContent ? (
+          isHtml ? (
+            <Box 
+              sx={{ 
+                '& img': { maxWidth: '100%', height: 'auto' }, 
+                wordBreak: 'break-word',
+                '& a': { color: 'primary.main' }
+              }}
+              dangerouslySetInnerHTML={{ __html: bodyContent }} 
+            />
+          ) : (
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {bodyContent}
+            </Typography>
+          )
         ) : (
-            <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>[Нет содержимого]</Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>
+            [Нет содержимого]
+          </Typography>
         )}
 
         {/* Вложения */} 
@@ -155,7 +169,10 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
                   <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
                     <AttachmentIcon fontSize="small" />
                   </ListItemIcon>
-                  <ListItemText primary={att.filename} secondary={`${att.content_type} (${att.size_kb ? att.size_kb + ' KB' : ''})`} />
+                  <ListItemText 
+                    primary={att.filename} 
+                    secondary={`${att.content_type} (${att.size_kb ? att.size_kb + ' KB' : ''})`} 
+                  />
                    {/* TODO: Кнопка скачивания */}
                    {/* <Button size="small" variant="outlined" sx={{ml: 1}}>Скачать</Button> */}
                 </ListItem>

@@ -1014,7 +1014,14 @@ class EmailMessageListView(APIView):
             # Логируем содержимое первого письма для отладки
             if result.get('emails') and len(result['emails']) > 0:
                 first_email = result['emails'][0]
-                logger.debug(f"Пример содержимого письма: body={first_email.get('body', '')[:100]}..., is_html={first_email.get('is_html', False)}")
+                logger.debug(f"Пример содержимого письма:")
+                logger.debug(f"- ID: {first_email.get('id')}")
+                logger.debug(f"- Subject: {first_email.get('subject')}")
+                logger.debug(f"- From: {first_email.get('from')}")
+                logger.debug(f"- Date: {first_email.get('date')}")
+                logger.debug(f"- Body length: {len(first_email.get('body', ''))}")
+                logger.debug(f"- Is HTML: {first_email.get('is_html')}")
+                logger.debug(f"- Mailbox: {first_email.get('mailbox')}")
 
             # Если результат успешный
             return Response(result)
