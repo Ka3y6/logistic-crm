@@ -315,19 +315,50 @@ def fetch_emails(user_email, mailbox='INBOX', limit=25, offset=0):
 
                     # Получаем тело письма
                     body = ""
+                    is_html = False
                     if msg.is_multipart():
                         for part in msg.walk():
-                            if part.get_content_type() == "text/plain":
+                            content_type = part.get_content_type()
+                            if content_type == "text/html":
+                                try:
+                                    body = part.get_payload(decode=True).decode()
+                                    is_html = True
+                                    break
+                                except:
+                                    try:
+                                        body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                                        is_html = True
+                                        break
+                                    except:
+                                        continue
+                            elif content_type == "text/plain" and not body:
                                 try:
                                     body = part.get_payload(decode=True).decode()
                                 except:
-                                    body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
-                                break
+                                    try:
+                                        body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                                    except:
+                                        continue
                     else:
-                        try:
-                            body = msg.get_payload(decode=True).decode()
-                        except:
-                            body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+                        content_type = msg.get_content_type()
+                        if content_type == "text/html":
+                            try:
+                                body = msg.get_payload(decode=True).decode()
+                                is_html = True
+                            except:
+                                try:
+                                    body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+                                    is_html = True
+                                except:
+                                    pass
+                        else:
+                            try:
+                                body = msg.get_payload(decode=True).decode()
+                            except:
+                                try:
+                                    body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+                                except:
+                                    pass
 
                     emails.append({
                         'id': email_id_str,
@@ -335,6 +366,7 @@ def fetch_emails(user_email, mailbox='INBOX', limit=25, offset=0):
                         'from': from_addr,
                         'date': date,
                         'body': body,
+                        'is_html': is_html,
                         'mailbox': selected_mailbox
                     })
                 except Exception as e:
