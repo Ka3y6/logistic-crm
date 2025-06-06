@@ -50,8 +50,8 @@ const EmailView = ({ email, onActionComplete, onCloseView, onReply, onReplyAll, 
   };
 
   // Определяем, какое тело использовать
-  const bodyContent = email.body_html || email.body_plain || '';
-  const isHtml = email.body_html !== undefined && email.body_html !== null && email.body_html !== '';
+  const bodyContent = email.body || '';
+  const isHtml = email.is_html || false;
 
   return (
     // Используем Box вместо Dialog

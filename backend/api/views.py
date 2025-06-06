@@ -1011,6 +1011,11 @@ class EmailMessageListView(APIView):
                     status=503 if error_type == ERR_TYPE_CONNECTION else 400
                 )
 
+            # Логируем содержимое первого письма для отладки
+            if result.get('emails') and len(result['emails']) > 0:
+                first_email = result['emails'][0]
+                logger.debug(f"Пример содержимого письма: body={first_email.get('body', '')[:100]}..., is_html={first_email.get('is_html', False)}")
+
             # Если результат успешный
             return Response(result)
 
