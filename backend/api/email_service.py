@@ -200,22 +200,19 @@ def fetch_emails(user, mailbox='INBOX', limit=20, offset=0):
                 f"[Gmail]/{gmail_folder.replace(' ', '')}",  # Без пробелов
             ]
         else:
-            # Если это стандартное имя, пробуем найти его в GMAIL_MAILBOXES
-            if mailbox in GMAIL_MAILBOXES:
-                gmail_name = GMAIL_MAILBOXES[mailbox]
-                mailbox_variants = [
-                    gmail_name,  # Gmail имя
-                    mailbox,  # Оригинальное имя
-                    f"INBOX.{mailbox}",  # С префиксом INBOX
-                    f"/{mailbox}",  # С префиксом слэша
-                    gmail_name.replace(' ', ''),  # Без пробелов
-                ]
-            else:
-                mailbox_variants = [
-                    mailbox,  # Оригинальное имя
-                    f"INBOX.{mailbox}",  # С префиксом INBOX
-                    f"/{mailbox}",  # С префиксом слэша
-                ]
+            # Для других почтовых сервисов
+            mailbox_variants = [
+                mailbox,  # Оригинальное имя
+                f"INBOX.{mailbox}",  # С префиксом INBOX
+                f"/{mailbox}",  # С префиксом слэша
+                mailbox.replace(' ', ''),  # Без пробелов
+                f"Sent",  # Стандартное имя для отправленных
+                f"Sent Items",  # Альтернативное имя
+                f"Отправленные",  # Русское имя
+                f"INBOX.Sent",  # С префиксом INBOX
+                f"INBOX.Sent Items",
+                f"INBOX.Отправленные"
+            ]
         
         logger.info(f"Варианты имен папок для {user.email}: {mailbox_variants}")
         
