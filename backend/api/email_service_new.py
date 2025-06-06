@@ -53,7 +53,7 @@ def fetch_emails(user_email, mailbox='INBOX', limit=25, offset=0):
         mailbox_variants = []
         
         # Для Gmail
-        if 'gmail.com' in user_email.lower():
+        if isinstance(user_email, str) and 'gmail.com' in user_email.lower():
             mailbox_variants = [
                 mailbox,
                 f'[Gmail]/{mailbox}',
