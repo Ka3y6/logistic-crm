@@ -986,53 +986,40 @@ class EmailMessageListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        mailbox = request.query_params.get('mailbox', 'INBOX')
-        logger.info(f"API GET /email/messages/ вызван для {request.user.email}, mailbox: {mailbox}")
-        logger.debug(f"Полные параметры запроса: {request.query_params}")
-        
-        # Получаем limit и offset с дефолтами и валидацией
         try:
-            limit = int(request.query_params.get('limit', 20))
-            if limit <= 0:
-                limit = 20 # Если отрицательный или 0, ставим дефолт
-        except (ValueError, TypeError):
-            limit = 20
-        try:
-            offset = int(request.query_params.get('offset', 0))
-            if offset < 0:
-                offset = 0 # Если отрицательный, ставим 0
-        except (ValueError, TypeError):
-            offset = 0
+            # Получаем параметры запроса
+            mailbox = request.GET.get('mailbox', 'INBOX')
+            limit = int(request.GET.get('limit', 25))
+            offset = int(request.GET.get('offset', 0))
 
-        logger.debug(f"Параметры пагинации: limit={limit}, offset={offset}")
+            # Получаем email пользователя
+            user_email = request.user.email
+            logger.info(f"API GET /email/messages/ вызван для {user_email}, mailbox: {mailbox}")
+            logger.debug(f"Полные параметры запроса: {request.GET}")
+            logger.debug(f"Параметры пагинации: limit={limit}, offset={offset}")
 
-        # Вызываем fetch_emails
-        logger.info(f"Вызов fetch_emails для {request.user.email} с параметрами: mailbox={mailbox}, limit={limit}, offset={offset}")
-        result = fetch_emails(request.user, mailbox=mailbox, limit=limit, offset=offset)
-        
-        # Проверяем количество возвращаемых значений
-        if len(result) == 2:
-            emails, error = result
-            total_count = 0
-        else:
-            emails, error, total_count = result
+            # Вызываем функцию получения писем
+            logger.info(f"Вызов fetch_emails для {user_email} с параметрами: mailbox={mailbox}, limit={limit}, offset={offset}")
+            result = fetch_emails(user_email, mailbox, limit, offset)
 
-        if error:
-            error_type, error_message = error
-            status_code = 500 
-            if error_type == ERR_TYPE_CONFIG: status_code = 400
-            elif error_type == ERR_TYPE_AUTHENTICATION: status_code = 401
-            elif error_type == ERR_TYPE_MAILBOX: status_code = 404
-            elif error_type == ERR_TYPE_CONNECTION: status_code = 503 # Service Unavailable
-            logger.warning(f"Ошибка при получении писем для {request.user.email} (mailbox: {mailbox}): {error_type} - {error_message}")
-            return Response({'error': error_message, 'error_type': error_type}, status=status_code)
+            # Если результат содержит ошибку
+            if isinstance(result, tuple) and len(result) == 2:
+                error_type, error_message = result
+                logger.warning(f"Ошибка при получении писем для {user_email} (mailbox: {mailbox}): {error_type} - {error_message}")
+                return Response(
+                    {'error': error_message},
+                    status=503 if error_type == ERR_TYPE_CONNECTION else 400
+                )
 
-        logger.info(f"Успешно получено {len(emails)} писем (total: {total_count}) для {request.user.email}, mailbox: {mailbox}")
-        # Возвращаем данные в нужном формате для пагинации
-        return Response({
-            'emails': emails,
-            'total_count': total_count
-        })
+            # Если результат успешный
+            return Response(result)
+
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при получении писем: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Внутренняя ошибка сервера'},
+                status=500
+            )
 
 class EmailMessageSendView(APIView):
     """Представление для отправки письма от имени текущего пользователя."""
