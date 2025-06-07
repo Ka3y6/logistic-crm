@@ -37,7 +37,7 @@ const SiteRequestsPage = () => {
       const response = await siteRequestsApi.getAll();
       console.log('API Response:', response);
       console.log('Response data:', response.data);
-      setRequests(Array.isArray(response.data) ? response.data : []);
+      setRequests(Array.isArray(response.data.results) ? response.data.results : []);
     } catch (error) {
       console.error('Ошибка при загрузке заявок:', error);
       setRequests([]);
