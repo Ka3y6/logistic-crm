@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Request
-from users.serializers import UserSerializer
+from api.serializers import UserSerializer
 
 class RequestSerializer(serializers.ModelSerializer):
     processed_by = UserSerializer(read_only=True)
