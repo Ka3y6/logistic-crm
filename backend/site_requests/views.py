@@ -18,25 +18,13 @@ def submit_feedback(request):
     API endpoint для приема заявок с формы обратной связи
     """
     try:
-        # Получаем домен источника из заголовка
-        source_domain = request.META.get('HTTP_ORIGIN', 'unknown')
-        
         # Создаем заявку
-        serializer = RequestCreateSerializer(data={
-            'name': request.data.get('name'),
-            'phone': request.data.get('phone'),
-            'email': request.data.get('email'),
-            'comment': request.data.get('comment'),
-            'source_domain': source_domain
-        })
+        serializer = RequestCreateSerializer(data=request.data)
         
         if serializer.is_valid():
             serializer.save()
-            logger.info(f"New feedback request created from {source_domain}")
-            return Response({
-                'status': 'success',
-                'message': 'Заявка успешно отправлена'
-            }, status=status.HTTP_201_CREATED)
+            logger.info(f"New feedback request created from {request.data.get('source_domain', 'unknown')}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             logger.error(f"Invalid feedback data: {serializer.errors}")
             return Response({
