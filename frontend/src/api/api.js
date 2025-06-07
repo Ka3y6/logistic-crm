@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://185.135.83.113:8000',
+  baseURL: (process.env.REACT_APP_API_URL || 'http://185.135.83.113:8000') + '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -105,8 +105,8 @@ export const documentsApi = {
 };
 
 export const siteRequestsApi = {
-  getAll: () => api.get('/site-requests/requests/'),
-  process: (id) => api.post(`/site-requests/requests/${id}/process/`),
-  complete: (id) => api.post(`/site-requests/requests/${id}/complete/`),
-  reject: (id) => api.post(`/site-requests/requests/${id}/reject/`),
+  getAll: () => api.get('site-requests/requests/'),
+  process: (id) => api.post(`site-requests/requests/${id}/process/`),
+  complete: (id) => api.post(`site-requests/requests/${id}/complete/`),
+  reject: (id) => api.post(`site-requests/requests/${id}/reject/`),
 }; 
