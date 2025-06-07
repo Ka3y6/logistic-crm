@@ -35,9 +35,12 @@ const SiteRequestsPage = () => {
   const fetchRequests = async () => {
     try {
       const response = await siteRequestsApi.getAll();
-      setRequests(response.data);
+      console.log('API Response:', response);
+      console.log('Response data:', response.data);
+      setRequests(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Ошибка при загрузке заявок:', error);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
