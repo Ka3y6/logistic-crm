@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from api.models import User
+from api.models import CustomUser as User
 
 class Request(models.Model):
     STATUS_CHOICES = [
