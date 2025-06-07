@@ -3,9 +3,10 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from .models import Request
 from .serializers import RequestSerializer, RequestCreateSerializer
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, AllowAny
 from django.views.decorators.csrf import csrf_exempt
 import logging
+from .permissions import IsAdminOrReadOnly
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,12 @@ def submit_feedback(request):
 class RequestViewSet(viewsets.ModelViewSet):
     queryset = Request.objects.all().order_by('-created_at')
     serializer_class = RequestSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        return [IsAdminUser()]
 
     def get_serializer_class(self):
         if self.action == 'create':
