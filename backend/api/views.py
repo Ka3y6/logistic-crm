@@ -996,7 +996,7 @@ class EmailMessageListView(APIView):
             user_email = request.user.email
             logger.info(f"API GET /email/messages/ вызван для {user_email}, mailbox: {mailbox}")
             logger.debug(f"Полные параметры запроса: {request.GET}")
-        logger.debug(f"Параметры пагинации: limit={limit}, offset={offset}")
+            logger.debug(f"Параметры пагинации: limit={limit}, offset={offset}")
 
             # Вызываем функцию получения писем
             logger.info(f"Вызов fetch_emails для {user_email} с параметрами: mailbox={mailbox}, limit={limit}, offset={offset}")
