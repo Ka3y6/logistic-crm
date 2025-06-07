@@ -99,4 +99,11 @@ export const documentsApi = {
   update: (id, data) => api.put(`/documents/${id}/`, data),
   delete: (id) => api.delete(`/documents/${id}/`),
   download: (id) => api.get(`/documents/${id}/?download=true`, { responseType: 'blob' }),
+};
+
+export const siteRequestsApi = {
+  getAll: () => api.get('/site-requests/requests/'),
+  process: (id) => api.post(`/site-requests/requests/${id}/process/`),
+  complete: (id) => api.post(`/site-requests/requests/${id}/complete/`),
+  reject: (id) => api.post(`/site-requests/requests/${id}/reject/`),
 }; 

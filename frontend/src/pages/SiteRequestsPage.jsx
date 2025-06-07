@@ -24,7 +24,7 @@ import {
   Close as CloseIcon,
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
-import api from '../api/api';
+import { siteRequestsApi } from '../api/api';
 
 const SiteRequestsPage = () => {
   const [requests, setRequests] = useState([]);
@@ -34,7 +34,7 @@ const SiteRequestsPage = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await api.get('/site-requests/requests/');
+      const response = await siteRequestsApi.getAll();
       setRequests(response.data);
     } catch (error) {
       console.error('Ошибка при загрузке заявок:', error);
@@ -49,7 +49,7 @@ const SiteRequestsPage = () => {
 
   const handleProcess = async (id) => {
     try {
-      await api.post(`/site-requests/requests/${id}/process/`);
+      await siteRequestsApi.process(id);
       fetchRequests();
     } catch (error) {
       console.error('Ошибка при обработке заявки:', error);
@@ -58,7 +58,7 @@ const SiteRequestsPage = () => {
 
   const handleComplete = async (id) => {
     try {
-      await api.post(`/site-requests/requests/${id}/complete/`);
+      await siteRequestsApi.complete(id);
       fetchRequests();
     } catch (error) {
       console.error('Ошибка при завершении заявки:', error);
@@ -67,7 +67,7 @@ const SiteRequestsPage = () => {
 
   const handleReject = async (id) => {
     try {
-      await api.post(`/site-requests/requests/${id}/reject/`);
+      await siteRequestsApi.reject(id);
       fetchRequests();
     } catch (error) {
       console.error('Ошибка при отклонении заявки:', error);
