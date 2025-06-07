@@ -1,16 +1,17 @@
 from django.db import models
 from django.utils import timezone
+from api.models import User
 
 class Request(models.Model):
     STATUS_CHOICES = [
         ('new', 'Новая'),
         ('in_progress', 'В обработке'),
-        ('completed', 'Завершена'),
-        ('rejected', 'Отклонена')
+        ('processed', 'Обработана'),
+        ('cancelled', 'Отменена')
     ]
 
     name = models.CharField(max_length=255, verbose_name='Имя')
-    phone = models.CharField(max_length=20, verbose_name='Номер телефона')
+    phone = models.CharField(max_length=20, verbose_name='Телефон')
     email = models.EmailField(verbose_name='Email')
     comment = models.TextField(verbose_name='Комментарий')
     status = models.CharField(
@@ -19,11 +20,11 @@ class Request(models.Model):
         default='new',
         verbose_name='Статус'
     )
-    created_at = models.DateTimeField(default=timezone.now, verbose_name='Дата создания')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
     source_domain = models.CharField(max_length=255, verbose_name='Домен источника')
     processed_by = models.ForeignKey(
-        'users.User',
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -37,4 +38,4 @@ class Request(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'Заявка от {self.name} ({self.created_at.strftime("%d.%m.%Y")})' 
+        return f"{self.name} - {self.get_status_display()}" 
