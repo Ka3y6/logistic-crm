@@ -14,8 +14,11 @@ api.interceptors.request.use(
     if (token) {
       // Добавляем префикс "Token" к токену
       config.headers.Authorization = `Token ${token}`;
-      console.log('Request headers:', config.headers);
     }
+    // Отладочный код
+    console.log('Request URL:', config.url);
+    console.log('Base URL:', config.baseURL);
+    console.log('Full URL:', config.baseURL + config.url);
     return config;
   },
   (error) => {
