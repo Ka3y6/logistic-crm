@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_filters',
     'ai_assistant.apps.AiAssistantConfig',
+    'site_requests',
 ]
 
 AUTH_USER_MODEL = 'api.CustomUser'  # Правильное имя приложения и модели
