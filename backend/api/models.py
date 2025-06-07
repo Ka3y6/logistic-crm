@@ -706,4 +706,29 @@ class TableHighlight(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.table_name}[{self.row_id}][{self.column_id}] = {self.color}"
-        return f"{self.user.email} - {self.table_name}[{self.row_id}][{self.column_id}] = {self.color}"
+
+class SiteRequest(models.Model):
+    name = models.CharField(max_length=255, verbose_name="Имя")
+    phone = models.CharField(max_length=20, verbose_name="Телефон")
+    email = models.EmailField(verbose_name="Email")
+    message = models.TextField(verbose_name="Сообщение")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('new', 'Новый'),
+            ('in_progress', 'В обработке'),
+            ('completed', 'Завершен'),
+            ('rejected', 'Отклонен')
+        ],
+        default='new',
+        verbose_name="Статус"
+    )
+
+    class Meta:
+        verbose_name = "Заявка с сайта"
+        verbose_name_plural = "Заявки с сайта"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Заявка от {self.name} ({self.created_at.strftime('%d.%m.%Y')})"

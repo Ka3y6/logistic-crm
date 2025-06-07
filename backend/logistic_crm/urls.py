@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('api/ai-assistant/', include('ai_assistant.urls', namespace='ai_assistant')),
+    path('api/site-requests/', include('site_requests.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('', RedirectView.as_view(url='/admin/')),
