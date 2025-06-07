@@ -47,6 +47,8 @@ class RequestViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return [AllowAny()]
+        if self.action in ['list', 'retrieve']:
+            return [IsAdminOrReadOnly()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -60,19 +62,19 @@ class RequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def process(self, request, pk=None):
         request_obj = self.get_object()
-        request_obj.status = 'processed'
+        request_obj.status = 'in_progress'
         request_obj.processed_by = request.user
         request_obj.save()
         return Response({'status': 'request processed'})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def complete(self, request, pk=None):
         request_obj = self.get_object()
         request_obj.status = 'completed'
         request_obj.save()
         return Response({'status': 'request completed'})
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def reject(self, request, pk=None):
         request_obj = self.get_object()
         request_obj.status = 'rejected'
