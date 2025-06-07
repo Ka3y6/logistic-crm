@@ -102,8 +102,8 @@ export const documentsApi = {
 };
 
 export const siteRequestsApi = {
-  getAll: () => api.get('/api/site-requests/requests/'),
-  process: (id) => api.post(`/api/site-requests/requests/${id}/process/`),
-  complete: (id) => api.post(`/api/site-requests/requests/${id}/complete/`),
-  reject: (id) => api.post(`/api/site-requests/requests/${id}/reject/`),
+  getAll: () => api.get('/site-requests/requests/'),
+  process: (id) => api.post(`/site-requests/requests/${id}/process/`),
+  complete: (id) => api.post(`/site-requests/requests/${id}/complete/`),
+  reject: (id) => api.post(`/site-requests/requests/${id}/reject/`),
 }; 
