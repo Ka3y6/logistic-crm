@@ -16,6 +16,8 @@ class RequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at', 'processed_by']
 
 class RequestCreateSerializer(serializers.ModelSerializer):
+    message = serializers.CharField(source='comment', write_only=True)
+
     class Meta:
         model = Request
-        fields = ['name', 'phone', 'email', 'comment', 'source_domain'] 
+        fields = ['name', 'phone', 'email', 'message', 'source_domain'] 
