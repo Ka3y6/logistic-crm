@@ -1,0 +1,14 @@
+[Unit]
+Description=Gunicorn daemon for Django project
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/html
+ExecStart=/usr/local/bin/gunicorn \
+    --config /var/www/html/gunicorn_config.py \
+    logistic_crm.wsgi:application
+
+[Install]
+WantedBy=multi-user.target 
