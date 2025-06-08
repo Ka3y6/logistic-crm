@@ -9,8 +9,8 @@ timeout = 120
 keepalive = 5
 
 # Настройки SSL
-certfile = "/etc/letsencrypt/live/crm.greatline.by/fullchain.pem"
-keyfile = "/etc/letsencrypt/live/crm.greatline.by/privkey.pem"
+certfile = "/etc/letsencrypt/archive/crm.greatline.by/fullchain1.pem"
+keyfile = "/etc/letsencrypt/archive/crm.greatline.by/privkey1.pem"
 
 # Настройки логирования
 accesslog = "-"
