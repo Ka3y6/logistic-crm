@@ -23,10 +23,15 @@ module.exports = function(app) {
         });
         
         // Устанавливаем заголовки
-        proxyReq.setHeader('X-Forwarded-Proto', 'http');
+        proxyReq.setHeader('X-Forwarded-Proto', 'https');
         proxyReq.setHeader('X-Forwarded-Host', '185.135.83.113:8000');
+        proxyReq.setHeader('Origin', 'https://185.135.83.113:8000');
       },
       onProxyRes: (proxyRes, req, res) => {
+        // Добавляем CORS заголовки
+        proxyRes.headers['Access-Control-Allow-Origin'] = 'http://185.135.83.113:3000';
+        proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+        
         // Логируем ответ
         console.log('Proxy Response:', {
           statusCode: proxyRes.statusCode,

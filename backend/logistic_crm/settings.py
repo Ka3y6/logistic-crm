@@ -83,7 +83,7 @@ SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 
 # Настройки безопасности
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = False  # Отключаем принудительное перенаправление на HTTPS в режиме разработки
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
@@ -96,6 +96,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://185.135.83.113",
     "https://185.135.83.113:8000",
     "https://185.135.83.113:443",
+    "http://185.135.83.113:3000",  # Добавляем URL для разработки
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
