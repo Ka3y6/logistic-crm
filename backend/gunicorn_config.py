@@ -8,10 +8,6 @@ threads = 2
 timeout = 120
 keepalive = 5
 
-# Настройки SSL
-certfile = "/etc/letsencrypt/archive/crm.greatline.by/fullchain1.pem"
-keyfile = "/etc/letsencrypt/archive/crm.greatline.by/privkey1.pem"
-
 # Настройки логирования
 accesslog = "-"
 errorlog = "-"
