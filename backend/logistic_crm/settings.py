@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'django_filters',
     'ai_assistant.apps.AiAssistantConfig',
     'site_requests',
-    'sslserver',
+    'channels',
 ]
 
 AUTH_USER_MODEL = 'api.CustomUser'  # Правильное имя приложения и модели
