@@ -5,7 +5,7 @@ module.exports = function(app) {
   app.use(
     ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: 'http://185.135.83.113:8000',
+      target: 'https://185.135.83.113:8000',
       changeOrigin: true,
       secure: false,
       ws: false,

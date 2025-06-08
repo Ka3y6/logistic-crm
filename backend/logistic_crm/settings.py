@@ -94,7 +94,8 @@ SECURE_HSTS_PRELOAD = True
 # Настройки CORS
 CORS_ALLOWED_ORIGINS = [
     "https://185.135.83.113",
-    "http://185.135.83.113",
+    "https://185.135.83.113:8000",
+    "https://185.135.83.113:443",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
