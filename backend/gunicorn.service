@@ -5,9 +5,9 @@ After=network.target
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/html
+WorkingDirectory=/opt/logistic-crm/backend
 ExecStart=/usr/local/bin/gunicorn \
-    --config /var/www/html/gunicorn_config.py \
+    --config /opt/logistic-crm/backend/gunicorn_config.py \
     logistic_crm.wsgi:application
 
 [Install]
