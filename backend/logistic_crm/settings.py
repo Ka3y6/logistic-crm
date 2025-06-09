@@ -27,7 +27,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'da2889f63f8140e0a6f342e86de21bec5bb75
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,185.135.83.113,185.135.83.113:8000,crm.greatline.by').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,crm.greatline.by').split(',')
 
 
 # Application definition
@@ -184,12 +184,12 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'logistic_crm'),
-        'USER': os.environ.get('DB_USER', 'greatline_root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'c64s6KPa'),
-        'HOST': os.environ.get('DB_HOST', '185.135.83.113'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 

@@ -26,11 +26,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('autoLogin');
       setUser(null);
       setError(null);
-      navigate('/login');
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error during logout:', error);
     }
-  }, [navigate]);
+  }, []);
 
   const validateToken = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       setError(null);
       
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
       return true;
     } catch (err) {
       if (!err.response) {

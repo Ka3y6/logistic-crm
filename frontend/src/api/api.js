@@ -1,11 +1,14 @@
 import axios from 'axios';
+import config from '../config';
 
 const api = axios.create({
-  baseURL: (process.env.REACT_APP_API_URL || 'https://185.135.83.113:8000') + '/api',
+  baseURL: config.API_URL + '/api',
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  xsrfCookieName: 'csrftoken',
+  xsrfHeaderName: 'X-CSRFToken',
 });
 
 // Добавляем перехватчик для добавления токена
@@ -16,6 +19,9 @@ api.interceptors.request.use(
       // Добавляем префикс "Token" к токену
       config.headers.Authorization = `Token ${token}`;
     }
+    // Добавляем заголовки для CORS
+    config.headers['Access-Control-Allow-Origin'] = 'https://crm.greatline.by';
+    config.headers['Access-Control-Allow-Credentials'] = 'true';
     // Отладочный код
     console.log('Request URL:', config.url);
     console.log('Base URL:', config.baseURL);

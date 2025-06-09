@@ -29,7 +29,8 @@ import {
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../api/api';
+import axios from 'axios';
+import config from '../../config';
 
 const statusColors = {
   todo: 'default',
@@ -67,32 +68,32 @@ const TaskDetail = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    const fetchTaskData = async () => {
+    const fetchTaskDetails = async () => {
       setLoading(true);
       try {
-        const response = await api.get(`api/tasks/${id}/`);
+        const response = await axios.get(`${config.API_URL}/api/tasks/${id}/`);
         setTask(response.data);
 
         // Если есть заказ, получаем его детали
         if (response.data.order) {
-          const orderRes = await api.get(`orders/${response.data.order}/`);
+          const orderRes = await axios.get(`${config.API_URL}/api/orders/${response.data.order}/`);
           setOrderDetails(orderRes.data);
         }
 
         // Получаем информацию об исполнителе
         if (response.data.assignee) {
-          const userRes = await api.get(`users/${response.data.assignee}/`);
+          const userRes = await axios.get(`${config.API_URL}/api/users/${response.data.assignee}/`);
           setAssigneeDetails(userRes.data);
         }
-      } catch (err) {
-        console.error('Ошибка при загрузке задачи:', err);
+      } catch (error) {
+        console.error('Error fetching task details:', error);
         setError('Не удалось загрузить данные задачи');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTaskData();
+    fetchTaskDetails();
   }, [id]);
 
   const handleDeleteClick = () => {
@@ -101,7 +102,7 @@ const TaskDetail = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      await api.delete(`tasks/${id}/`);
+      await axios.delete(`${config.API_URL}/tasks/${id}/`);
       navigate('/tasks');
     } catch (err) {
       console.error('Ошибка при удалении задачи:', err);
@@ -113,7 +114,7 @@ const TaskDetail = () => {
   const handleMarkAsDone = async () => {
     try {
       const updatedTask = { ...task, status: 'done' };
-      await api.put(`tasks/${id}/`, updatedTask);
+      await axios.put(`${config.API_URL}/tasks/${id}/`, updatedTask);
       setTask(updatedTask);
     } catch (err) {
       console.error('Ошибка при обновлении статуса:', err);

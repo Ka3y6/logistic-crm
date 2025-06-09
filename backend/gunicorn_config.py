@@ -2,15 +2,14 @@ import multiprocessing
 
 # Базовые настройки
 bind = "127.0.0.1:8000"
-workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = "gthread"
-threads = 2
+workers = 4
+worker_class = "uvicorn.workers.UvicornWorker"
 timeout = 120
 keepalive = 5
 
 # Настройки логирования
-accesslog = "-"
-errorlog = "-"
+accesslog = "/var/log/gunicorn/access.log"
+errorlog = "/var/log/gunicorn/error.log"
 loglevel = "info"
 
 # Настройки безопасности

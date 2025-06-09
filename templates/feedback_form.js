@@ -13,7 +13,7 @@ async function submitFeedbackForm(event) {
 
     try {
         // Отправляем данные на API
-        const response = await fetch('http://your-crm-domain.com/api/site-requests/submit-feedback/', {
+        const response = await fetch('https://crm.greatline.by/api/site-requests/submit-feedback/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

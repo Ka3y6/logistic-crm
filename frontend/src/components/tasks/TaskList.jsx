@@ -35,7 +35,8 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { format } from 'date-fns';
-import api from '../../api/api';
+import axios from 'axios';
+import config from '../../config';
 
 const statusColors = {
   todo: 'default',
@@ -77,15 +78,15 @@ const TaskList = () => {
       setLoading(true);
       try {
         const [tasksRes, ordersRes, usersRes] = await Promise.all([
-          api.get('api/tasks/'),
-          api.get('orders/'),
-          api.get('users/'),
+          axios.get(`${config.API_URL}/api/tasks/`),
+          axios.get(`${config.API_URL}/api/orders/`),
+          axios.get(`${config.API_URL}/api/users/`),
         ]);
         setTasks(tasksRes.data);
         setOrders(ordersRes.data);
         setUsers(usersRes.data);
       } catch (error) {
-        console.error('Ошибка при загрузке данных:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
@@ -118,7 +119,7 @@ const TaskList = () => {
 
   const handleDeleteConfirm = async () => {
     try {
-      await api.delete(`tasks/${taskToDelete.id}/`);
+      await axios.delete(`${config.API_URL}/api/tasks/${taskToDelete.id}/`);
       setTasks(tasks.filter((t) => t.id !== taskToDelete.id));
       setDeleteDialogOpen(false);
     } catch (error) {

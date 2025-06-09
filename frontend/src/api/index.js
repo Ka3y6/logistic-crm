@@ -1,7 +1,8 @@
 import axios from 'axios';
+import config from '../config';
 
 // Убедимся, что всегда используется HTTP и правильный путь API
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://185.135.83.113:8000';
+const API_BASE_URL = config.API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

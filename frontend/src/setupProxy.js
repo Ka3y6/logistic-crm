@@ -5,9 +5,9 @@ module.exports = function(app) {
   app.use(
     ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: 'http://127.0.0.1:8000',
+      target: 'https://crm.greatline.by',
       changeOrigin: true,
-      secure: false,
+      secure: true,
       ws: true,
       pathRewrite: {
         '^/api': '/api' // Сохраняем префикс /api

@@ -26,7 +26,7 @@ SYSTEM_PROMPT = """Ты - AI ассистент для CRM системы лог
 
 Всегда отвечай профессионально и по существу."""
 
-referer = os.environ.get('OPENROUTER_REFERER', 'http://185.135.83.113:3000')
+referer = os.environ.get('OPENROUTER_REFERER', 'https://crm.greatline.by')
 
 class OpenRouterClient:
     def __init__(self, user=None):

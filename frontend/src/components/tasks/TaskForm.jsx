@@ -19,7 +19,8 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ruLocale from 'date-fns/locale/ru';
-import api from '../../api/api';
+import axios from 'axios';
+import config from '../../config';
 
 const TaskForm = () => {
   const { id } = useParams();
@@ -54,15 +55,15 @@ const TaskForm = () => {
       try {
         // Загрузка списка пользователей и заказов
         const [usersRes, ordersRes] = await Promise.all([
-          api.get('users/'),
-          api.get('orders/'),
+          axios.get(`${config.API_URL}/api/users/`),
+          axios.get(`${config.API_URL}/api/orders/`),
         ]);
         setUsers(usersRes.data);
         setOrders(ordersRes.data);
 
         // Если это редактирование, загрузка данных задачи
         if (isEditing) {
-          const taskRes = await api.get(`tasks/${id}/`);
+          const taskRes = await axios.get(`${config.API_URL}/api/tasks/${id}/`);
           const taskData = taskRes.data;
 
           setFormData({
@@ -150,9 +151,9 @@ const TaskForm = () => {
       };
 
       if (isEditing) {
-        await api.put(`tasks/${id}/`, payload);
+        await axios.put(`${config.API_URL}/api/tasks/${id}/`, payload);
       } else {
-        await api.post('tasks/', payload);
+        await axios.post(`${config.API_URL}/api/tasks/`, payload);
       }
 
       navigate('/tasks');
