@@ -185,15 +185,16 @@ WSGI_APPLICATION = 'logistic_crm.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'logistic_crm'),
-        'USER': os.environ.get('DB_USER', 'root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'root'),  # Стандартный пароль для Docker MariaDB
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '3306'),
+        'NAME': 'logistic_crm',
+        'USER': 'greatline_root',
+        'PASSWORD': 'c64s6KPa',
+        'HOST': '185.135.83.113',
+        'PORT': '3306',
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'unix_socket': None
+            'unix_socket': None,
+            'connect_timeout': 10
         }
     }
 }
