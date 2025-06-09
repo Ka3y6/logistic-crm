@@ -28,3 +28,6 @@ werkzeug==2.3.7
 pyOpenSSL==23.2.0
 gunicorn==21.2.0
 gevent==23.9.1
+channels==4.0.0
+daphne==4.0.0
+channels-redis==4.1.0

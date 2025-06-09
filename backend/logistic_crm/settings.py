@@ -39,17 +39,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
     'api.apps.ApiConfig',
     'drf_spectacular',
     'django_filters',
     'ai_assistant.apps.AiAssistantConfig',
     'site_requests',
-    'channels',
 ]
 
 AUTH_USER_MODEL = 'api.CustomUser'  # Правильное имя приложения и модели

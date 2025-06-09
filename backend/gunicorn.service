@@ -6,7 +6,8 @@ After=network.target
 User=www-data
 Group=www-data
 WorkingDirectory=/opt/logistic-crm/backend
-ExecStart=/usr/local/bin/gunicorn \
+Environment="PATH=/opt/logistic-crm/backend/venv/bin"
+ExecStart=/opt/logistic-crm/backend/venv/bin/gunicorn \
     --config /opt/logistic-crm/backend/gunicorn_config.py \
     logistic_crm.wsgi:application
 
