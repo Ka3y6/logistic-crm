@@ -3,7 +3,7 @@ import multiprocessing
 # Базовые настройки
 bind = "0.0.0.0:8000"
 workers = 4
-worker_class = "uvicorn.workers.UvicornWorker"
+worker_class = "gunicorn.workers.sync.SyncWorker"
 timeout = 120
 keepalive = 5
 
