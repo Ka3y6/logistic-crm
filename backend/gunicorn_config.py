@@ -15,8 +15,4 @@ loglevel = "info"
 # Настройки безопасности
 forwarded_allow_ips = "*"
 proxy_protocol = True
-proxy_allow_ips = "*"
-
-# SSL конфигурация
-keyfile = "/etc/letsencrypt/live/crm.greatline.by/privkey.pem"
-certfile = "/etc/letsencrypt/live/crm.greatline.by/fullchain.pem" 
+proxy_allow_ips = "*" 
