@@ -5,9 +5,9 @@ module.exports = function(app) {
   app.use(
     ['/api', '/csrf-token', '/validate-token'],
     createProxyMiddleware({
-      target: 'https://185.135.83.113:8000',
+      target: 'https://crm.greatline.by',
       changeOrigin: true,
-      secure: false,
+      secure: true,
       ws: false,
       pathRewrite: {
         '^/api': '/api' // Сохраняем префикс /api
@@ -24,13 +24,14 @@ module.exports = function(app) {
         
         // Устанавливаем заголовки
         proxyReq.setHeader('X-Forwarded-Proto', 'https');
-        proxyReq.setHeader('X-Forwarded-Host', '185.135.83.113:8000');
-        proxyReq.setHeader('Origin', 'https://185.135.83.113:8000');
+        proxyReq.setHeader('X-Forwarded-Host', 'crm.greatline.by');
+        proxyReq.setHeader('Origin', 'https://crm.greatline.by');
       },
       onProxyRes: (proxyRes, req, res) => {
         // Добавляем CORS заголовки
-        proxyRes.headers['Access-Control-Allow-Origin'] = 'http://185.135.83.113:3000';
+        proxyRes.headers['Access-Control-Allow-Origin'] = 'https://crm.greatline.by';
         proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+        proxyRes.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin';
         
         // Логируем ответ
         console.log('Proxy Response:', {

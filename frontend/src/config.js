@@ -1,5 +1,5 @@
 const config = {
-    API_URL: process.env.REACT_APP_API_URL || 'https://185.135.83.113:8000',
+    API_URL: process.env.REACT_APP_API_URL || 'https://crm.greatline.by',
     EMAIL_SERVICE: {
         HOST: process.env.REACT_APP_EMAIL_HOST,
         PORT: process.env.REACT_APP_EMAIL_PORT,
