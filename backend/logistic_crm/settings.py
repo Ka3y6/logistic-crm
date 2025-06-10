@@ -93,6 +93,7 @@ SECURE_HSTS_PRELOAD = True
 # Настройки CORS
 CORS_ALLOWED_ORIGINS = [
     "https://crm.greatline.by",
+    "https://greatline.by",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
