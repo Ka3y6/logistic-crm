@@ -1,17 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Typography,
   Button,
-  Chip,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -25,12 +16,16 @@ import {
   Visibility as VisibilityIcon,
 } from '@mui/icons-material';
 import { siteRequestsApi } from '../api/api';
+import ClientForm from '../components/clients/ClientForm';
+import { clientsApi } from '../api/api';
+import SiteRequestList from '../components/siteRequests/SiteRequestList';
 
 const SiteRequestsPage = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const fetchRequests = async () => {
     try {
@@ -82,6 +77,46 @@ const SiteRequestsPage = () => {
     setViewDialogOpen(true);
   };
 
+  const handleOpenCreateClient = (request) => {
+    setSelectedRequest(request);
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateClient = async (formData) => {
+    try {
+      await clientsApi.create(formData);
+      await siteRequestsApi.process(selectedRequest.id);
+      setCreateDialogOpen(false);
+      setSelectedRequest(null);
+      fetchRequests();
+    } catch (error) {
+      console.error('Ошибка при создании клиента:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Удалить заявку?')) return;
+    try {
+      await siteRequestsApi.delete(id);
+      fetchRequests();
+    } catch (error) {
+      console.error('Ошибка при удалении заявки:', error);
+    }
+  };
+
+  const handleBulkDelete = async (ids) => {
+    if (!ids.length) return;
+    if (!window.confirm(`Удалить ${ids.length} заявок?`)) return;
+    try {
+      for (const id of ids) {
+        await siteRequestsApi.delete(id);
+      }
+      fetchRequests();
+    } catch (error) {
+      console.error('Ошибка при массовом удалении заявок:', error);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'new':
@@ -118,77 +153,15 @@ const SiteRequestsPage = () => {
 
   return (
     <Box p={3}>
-      <Typography variant="h4" gutterBottom>
-        Заявки с сайта
-      </Typography>
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Дата</TableCell>
-              <TableCell>Имя</TableCell>
-              <TableCell>Телефон</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Статус</TableCell>
-              <TableCell>Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {requests.map((request) => (
-              <TableRow key={request.id}>
-                <TableCell>{new Date(request.created_at).toLocaleString()}</TableCell>
-                <TableCell>{request.name}</TableCell>
-                <TableCell>{request.phone}</TableCell>
-                <TableCell>{request.email}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={getStatusText(request.status)}
-                    color={getStatusColor(request.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleView(request)}
-                    title="Просмотр"
-                  >
-                    <VisibilityIcon />
-                  </IconButton>
-                  {request.status === 'new' && (
-                    <>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleProcess(request.id)}
-                        title="В обработку"
-                      >
-                        <CheckIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleReject(request.id)}
-                        title="Отклонить"
-                      >
-                        <CloseIcon />
-                      </IconButton>
-                    </>
-                  )}
-                  {request.status === 'in_progress' && (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleComplete(request.id)}
-                      title="Завершить"
-                    >
-                      <CheckIcon />
-                    </IconButton>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <SiteRequestList
+        requests={requests}
+        loading={loading}
+        error={null}
+        onApprove={handleOpenCreateClient}
+        onDelete={handleDelete}
+        onBulkDelete={handleBulkDelete}
+        onApplyFilters={() => {}}
+      />
 
       <Dialog
         open={viewDialogOpen}
@@ -265,6 +238,24 @@ const SiteRequestsPage = () => {
           </>
         )}
       </Dialog>
+
+      <ClientForm
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSubmit={handleCreateClient}
+        client={selectedRequest ? {
+          company_name: selectedRequest.name,
+          comments: selectedRequest.message || '',
+          contacts: [
+            {
+              type: 'manager',
+              phone: selectedRequest.phone,
+              email: selectedRequest.email,
+              name: selectedRequest.name,
+            },
+          ],
+        } : null}
+      />
     </Box>
   );
 };

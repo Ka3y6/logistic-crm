@@ -7,6 +7,7 @@ from .views import (
     VehicleViewSet,
     validate_token,
     get_csrf_token,
+    csrf_token,
     login_view,
     TaskViewSet,
     DocumentViewSet, 
@@ -44,6 +45,7 @@ router.register(r'highlights', TableHighlightViewSet, basename='highlights')
 
 urlpatterns = [
     path('csrf/', get_csrf_token, name='csrf-token'),
+    path('csrf-token/', csrf_token, name='csrf-token-json'),
     path('login/', login_view, name='login'),
     path('validate-token/', validate_token, name='validate-token'),
     path('', include(router.urls)),

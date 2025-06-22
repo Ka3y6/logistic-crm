@@ -94,6 +94,8 @@ SECURE_HSTS_PRELOAD = True
 CORS_ALLOWED_ORIGINS = [
     "https://crm.greatline.by",
     "https://greatline.by",
+    "http://localhost:3000",  # локальная среда разработки
+    "http://127.0.0.1:3000",  # локальная среда разработки
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
@@ -114,6 +116,7 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'access-control-allow-credentials',
 ]
 
 CORS_EXPOSE_HEADERS = ['X-CSRFToken']

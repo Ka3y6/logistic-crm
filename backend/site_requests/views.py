@@ -10,6 +10,15 @@ from .permissions import IsAdminOrReadOnly
 
 logger = logging.getLogger(__name__)
 
+# Дополнительное разрешение: допускает пользователей с role == 'admin'
+class IsAdminOrRoleAdmin(IsAdminUser):
+    """Разрешает доступ стaff-пользователям ИЛИ тем, у кого role == 'admin'."""
+
+    def has_permission(self, request, view):
+        is_staff = super().has_permission(request, view)
+        is_role_admin = bool(request.user and getattr(request.user, 'role', None) == 'admin')
+        return is_staff or is_role_admin
+
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
@@ -49,7 +58,7 @@ class RequestViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         if self.action in ['list', 'retrieve']:
             return [IsAdminOrReadOnly()]
-        return [IsAdminUser()]
+        return [IsAdminOrRoleAdmin()]
 
     def get_serializer_class(self):
         if self.action == 'create':

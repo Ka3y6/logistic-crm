@@ -19,9 +19,6 @@ api.interceptors.request.use(
       // Добавляем префикс "Token" к токену
       config.headers.Authorization = `Token ${token}`;
     }
-    // Добавляем заголовки для CORS
-    config.headers['Access-Control-Allow-Origin'] = 'https://crm.greatline.by';
-    config.headers['Access-Control-Allow-Credentials'] = 'true';
     // Отладочный код
     console.log('Request URL:', config.url);
     console.log('Base URL:', config.baseURL);
@@ -116,4 +113,5 @@ export const siteRequestsApi = {
   process: (id) => api.post(`site-requests/requests/${id}/process/`),
   complete: (id) => api.post(`site-requests/requests/${id}/complete/`),
   reject: (id) => api.post(`site-requests/requests/${id}/reject/`),
+  delete: (id) => api.delete(`site-requests/requests/${id}/`),
 }; 

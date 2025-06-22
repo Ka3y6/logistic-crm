@@ -17,7 +17,7 @@ const api = axios.create({
 // Получаем CSRF токен при инициализации
 const getCsrfToken = async () => {
   try {
-    const response = await api.get('/csrf-token');
+    const response = await api.get('/api/csrf-token');
     const csrfToken = response.data.csrfToken;
     api.defaults.headers.common['X-CSRFToken'] = csrfToken;
   } catch (error) {
@@ -34,7 +34,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     
     // Убедимся, что URL начинается с /api/ для API запросов
-    if (config.url.startsWith('/api/') || config.url === '/csrf-token' || config.url === '/validate-token') {
+    if (config.url.startsWith('/api/') || config.url === '/api/csrf-token' || config.url === '/api/validate-token') {
       // URL уже правильный
     } else if (!config.url.startsWith('/api/')) {
       config.url = '/api' + (config.url.startsWith('/') ? config.url : '/' + config.url);

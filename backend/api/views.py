@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import ensure_csrf_cookie
-from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.decorators import api_view, permission_classes, action, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
 from django.contrib.auth import authenticate
@@ -113,6 +113,8 @@ def get_csrf_token(request):
     return response
 
 @api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
 def csrf_token(request):
     token = get_token(request)
     return Response({'csrfToken': token})
