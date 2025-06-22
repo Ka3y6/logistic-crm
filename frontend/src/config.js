@@ -1,5 +1,5 @@
 const config = {
-    API_URL: process.env.REACT_APP_API_URL || '/api',
+    API_URL: process.env.REACT_APP_API_URL || '',
     EMAIL_SERVICE: {
         HOST: process.env.REACT_APP_EMAIL_HOST,
         PORT: process.env.REACT_APP_EMAIL_PORT,
