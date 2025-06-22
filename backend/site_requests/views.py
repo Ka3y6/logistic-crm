@@ -5,6 +5,7 @@ from .models import Request
 from .serializers import RequestSerializer, RequestCreateSerializer
 from rest_framework.permissions import IsAdminUser, AllowAny
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import logging
 from .permissions import IsAdminOrReadOnly
 
@@ -48,6 +49,7 @@ def submit_feedback(request):
             'message': 'Внутренняя ошибка сервера'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class RequestViewSet(viewsets.ModelViewSet):
     queryset = Request.objects.all().order_by('-created_at')
     serializer_class = RequestSerializer
