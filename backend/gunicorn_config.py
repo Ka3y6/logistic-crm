@@ -15,4 +15,4 @@ loglevel = "info"
 # Настройки безопасности
 forwarded_allow_ips = "*"
 proxy_protocol = True
-proxy_allow_ips = "*" 
+proxy_allow_ips = "*"

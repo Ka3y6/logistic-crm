@@ -1,3 +1,3 @@
 [tool.black]
 line-length = 120
-exclude = "(\.venv|env|migrations|__pycache__)" 
+exclude = '(\.venv|env|migrations|__pycache__)' 
