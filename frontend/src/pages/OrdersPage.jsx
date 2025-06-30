@@ -51,6 +51,7 @@ import DocumentGenerator from '../components/orders/DocumentGenerator';
 import { createCalendarTask } from '../api/calendar';
 import { predefinedColors } from '../constants/colors';
 import TableFilters from '../components/common/TableFilters';
+import { useAuth } from '../contexts/AuthContext';
 
 const OrdersPage = () => {
   const [orders, setOrders] = useState([]);
@@ -79,6 +80,7 @@ const OrdersPage = () => {
   const navigate = useNavigate();
   const [statusAnchorEl, setStatusAnchorEl] = useState(null);
   const [selectedStatusType, setSelectedStatusType] = useState(null);
+  const { user } = useAuth();
 
   // Стили для вкладок, чтобы они выглядели как кнопки
   const buttonLikeTabStyles = {
@@ -302,11 +304,16 @@ const OrdersPage = () => {
       
       const payload = {
         ...formData,
-        client_id: formData.client,
-        carrier_id: formData.carrier,
         status: 'new',
         payment_status: 'pending'
       };
+
+      if (payload.client !== undefined && payload.client_id === undefined) {
+        payload.client_id = payload.client;
+      }
+      if (payload.carrier !== undefined && payload.carrier_id === undefined) {
+        payload.carrier_id = payload.carrier;
+      }
 
       console.log('Данные для API:', payload);
 
@@ -323,30 +330,32 @@ const OrdersPage = () => {
         setSuccess('Заказ успешно создан.');
 
         // Создаем задачи в календаре после успешного создания заказа
-        if (payload.carrier_id) {
-          const client = clients.find(c => c.id === payload.client_id);
-          const orderNumber = payload.contract_number || 'Новый заказ';
-          const clientName = client ? client.company_name : 'Не указан';
+        const client = clients.find(c => c.id === payload.client_id);
+        const orderIdForTask = createdOrderData.id;
+        const clientName = client ? client.company_name : 'Не указан';
 
-          if (payload.loading_date) {
-            await createCalendarTask({
-              title: 'Загрузка',
-              description: `Заказ №${orderNumber}\nКлиент: ${clientName}`,
-              priority: 'high',
-              deadline: payload.loading_date,
-              assignee_id: payload.carrier_id
-            });
-          }
+        const taskBase = {
+          priority: 'high',
+          assignee_id: user.id, // назначаем текущего пользователя, чтобы задачи были видны в его календаре
+          order_id: orderIdForTask,
+        };
 
-          if (payload.unloading_date) {
-            await createCalendarTask({
-              title: 'Выгрузка',
-              description: `Заказ №${orderNumber}\nКлиент: ${clientName}`,
-              priority: 'high',
-              deadline: payload.unloading_date,
-              assignee_id: payload.carrier_id
-            });
-          }
+        if (payload.loading_date) {
+          await createCalendarTask({
+            ...taskBase,
+            title: 'Загрузка',
+            description: `Заказ №${orderIdForTask}\nКлиент: ${clientName}`,
+            deadline: payload.loading_date,
+          });
+        }
+
+        if (payload.unloading_date) {
+          await createCalendarTask({
+            ...taskBase,
+            title: 'Выгрузка',
+            description: `Заказ №${orderIdForTask}\nКлиент: ${clientName}`,
+            deadline: payload.unloading_date,
+          });
         }
       }
 
@@ -538,7 +547,13 @@ const OrdersPage = () => {
       field: 'totalPrice',
       headerName: 'Сумма',
       minWidth: 100,
-      renderCell: ({ row }) => row.total_price ? `${row.total_price} ₽` : '-',
+      renderCell: ({ row }) => {
+        if (row.total_price === undefined || row.total_price === null || row.total_price === '') {
+          return '-';
+        }
+        const code = row.payment_currency || 'RUB';
+        return `${row.total_price} ${code}`;
+      },
     },
     {
       field: 'paymentStatus',

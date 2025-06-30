@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0008_remove_carrier_created_by_remove_client_created_by_and_more'),
+        ("api", "0008_remove_carrier_created_by_remove_client_created_by_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='userprofile',
-            name='imap_use_ssl',
-            field=models.BooleanField(default=True, verbose_name='Использовать SSL для IMAP'),
+            model_name="userprofile",
+            name="imap_use_ssl",
+            field=models.BooleanField(default=True, verbose_name="Использовать SSL для IMAP"),
         ),
     ]

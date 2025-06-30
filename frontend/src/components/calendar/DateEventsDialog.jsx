@@ -19,6 +19,8 @@ import { Delete as DeleteIcon, Add as AddIcon, Edit as EditIcon } from '@mui/ico
 import moment from 'moment';
 import 'moment/locale/ru';
 import RenderDescription from './RenderDescription';
+import OrderCard from '../orders/OrderCard';
+import api from '../../api';
 
 const DateEventsDialog = ({ 
   open, 
@@ -29,6 +31,24 @@ const DateEventsDialog = ({
   onAddTask,
   onEditTask
 }) => {
+  const [orderDialogOpen, setOrderDialogOpen] = React.useState(false);
+  const [selectedOrder, setSelectedOrder] = React.useState(null);
+
+  const handleOrderClick = async (orderId) => {
+    try {
+      const response = await api.get(`/orders/${orderId}/`);
+      setSelectedOrder(response.data);
+      setOrderDialogOpen(true);
+    } catch (error) {
+      console.error('Ошибка при загрузке заказа:', error);
+    }
+  };
+
+  const handleOrderDialogClose = () => {
+    setOrderDialogOpen(false);
+    setSelectedOrder(null);
+  };
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'high':
@@ -60,6 +80,7 @@ const DateEventsDialog = ({
   );
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={onClose}
@@ -77,7 +98,7 @@ const DateEventsDialog = ({
                 <ListItem alignItems="flex-start" sx={{ py: 1.5 }}>
                   <ListItemText
                     primary={<Typography variant="body1" component="span" sx={{ fontWeight: 500 }}>{task.title}</Typography>}
-                    secondary={<RenderDescription description={task.description} />}
+                    secondary={<RenderDescription description={task.description} onOrderClick={handleOrderClick} />}
                     sx={{ mr: 6 }}
                   />
                   <ListItemSecondaryAction sx={{ top: '16px', right:'16px', display: 'flex', alignItems: 'center' }}>
@@ -130,6 +151,10 @@ const DateEventsDialog = ({
         <Button onClick={onClose} variant="contained" size="medium">Закрыть</Button>
       </DialogActions>
     </Dialog>
+    {selectedOrder && (
+      <OrderCard open={orderDialogOpen} onClose={handleOrderDialogClose} order={selectedOrder} />
+    )}
+    </>
   );
 };
 

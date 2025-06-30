@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -14,7 +14,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton
+  IconButton,
+  InputAdornment
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -26,7 +27,37 @@ import { createCalendarTask } from '../../api/calendar';
 
 const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
   const [activeTab, setActiveTab] = useState(0);
-  const [formData, setFormData] = useState(order || {});
+  const financeFields = [
+    'payment_currency',
+    'carrier_rate',
+    'client_rate',
+    'price_usd',
+    'cost_with_vat',
+    'cost_without_vat',
+    'vat_rate',
+    'margin_income',
+    'demurrage_amount',
+  ];
+
+  // Пустой шаблон для нового заказа
+  const EMPTY_ORDER = financeFields.reduce((acc, f) => ({ ...acc, [f]: '' }), {});
+
+  const [formData, setFormData] = useState(EMPTY_ORDER);
+
+  useEffect(() => {
+    if (order) {
+      const mapped = {
+        ...order,
+        client: order.client?.id || order.client_id || '',
+        carrier: order.carrier?.id || order.carrier_id || '',
+      };
+      // гарантируем наличие всех финансовых полей
+      financeFields.forEach((f) => {
+        if (mapped[f] === undefined || mapped[f] === null) mapped[f] = '';
+      });
+      setFormData(mapped);
+    }
+  }, [order]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -51,7 +82,6 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
         description: `Заказ №${orderNumber}\nКлиент: ${clientName}`,
         priority: 'high',
         deadline: date.toISOString(),
-        assignee_id: formData.carrier
       };
       await createCalendarTask(taskData);
     } catch (error) {
@@ -70,8 +100,19 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    console.log('Отправка формы с данными:', formData);
-    onSubmit(formData);
+    const payload = {
+      client_id: formData.client || null,
+      carrier_id: formData.carrier || null,
+    };
+
+    // переносим все остальные поля (пустые строки превращаем в null)
+    Object.entries(formData).forEach(([key, val]) => {
+      if (key === 'client' || key === 'carrier') return;
+      payload[key] = val === '' ? null : val;
+    });
+
+    console.log('Отправка формы с данными:', payload);
+    onSubmit(payload);
   };
 
   const renderDocumentsTab = () => (
@@ -232,6 +273,7 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
             <MenuItem value="RUB">Рубль (RUB)</MenuItem>
             <MenuItem value="USD">Доллар (USD)</MenuItem>
             <MenuItem value="EUR">Евро (EUR)</MenuItem>
+            <MenuItem value="BYN">Бел. рубль (BYN)</MenuItem>
           </Select>
         </FormControl>
       </Grid>
@@ -250,6 +292,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.demurrage_amount || ''}
           onChange={handleChange('demurrage_amount')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -268,6 +315,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.total_service_cost || ''}
           onChange={handleChange('total_service_cost')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -277,6 +329,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.cost_without_vat || ''}
           onChange={handleChange('cost_without_vat')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -295,6 +352,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.cost_with_vat || ''}
           onChange={handleChange('cost_with_vat')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -304,6 +366,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.carrier_rate || ''}
           onChange={handleChange('carrier_rate')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -313,6 +380,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.client_rate || ''}
           onChange={handleChange('client_rate')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -322,6 +394,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.margin_income || ''}
           onChange={handleChange('margin_income')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>
@@ -331,6 +408,11 @@ const OrderForm = ({ order, clients, carriers, onSubmit, onClose }) => {
           type="number"
           value={formData.total_price || ''}
           onChange={handleChange('total_price')}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">{formData.payment_currency || 'RUB'}</InputAdornment>
+            )
+          }}
         />
       </Grid>
       <Grid item xs={12} sm={6}>

@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 // --- Обновленные Стили для Календаря --- 
 const calendarStyles = {
   calendar: {
-    height: 'calc(100vh - 150px)',
+    height: 'calc(100% - 32px)',
     border: 'none',
     borderRadius: '8px',
     fontFamily: 'inherit',
@@ -292,8 +292,8 @@ const CalendarView = () => {
   }
 
   return (
-    <Box>
-      <Paper sx={{ p: 2, overflow: 'hidden' }}>
+    <Box sx={{ height: 'calc(100vh - 64px)', width: '100%' }}>
+      <Paper sx={{ pt: 1, pb: 1, pl: 2, pr: 2, overflow: 'hidden', width: '100%', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
         <Calendar
           localizer={localizer}
           events={[]}

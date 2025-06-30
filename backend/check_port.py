@@ -1,5 +1,5 @@
 import socket
-import sys
+
 
 def check_port(host, port):
     try:
@@ -20,11 +20,12 @@ def check_port(host, port):
     except socket.error as e:
         print(f"Ошибка при проверке порта: {e}")
 
+
 if __name__ == "__main__":
     # Проверяем оба варианта - доменное имя и IP
     hosts = ["s2.open.by", "93.84.119.237"]
     port = 3306
-    
+
     for host in hosts:
         print(f"\nПроверяем подключение к {host}:{port}")
-        check_port(host, port) 
+        check_port(host, port)

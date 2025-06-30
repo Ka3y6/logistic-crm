@@ -18,10 +18,12 @@ import {
   ChevronRight as ChevronRightIcon
 } from '@mui/icons-material';
 import UserOrdersView from './UserOrdersView';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, startOfWeek, endOfWeek, addDays } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import api from '../../api';
 import CalendarTaskForm from '../calendar/CalendarTaskForm';
+import DateEventsDialog from '../calendar/DateEventsDialog';
+import { deleteCalendarTask } from '../../api/calendar';
 
 const UserCalendarView = ({ userId }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -30,6 +32,8 @@ const UserCalendarView = ({ userId }) => {
   const [error, setError] = useState('');
   const [selectedDate, setSelectedDate] = useState(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [dateEventsDialogOpen, setDateEventsDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
 
   useEffect(() => {
     if (userId) {
@@ -44,7 +48,11 @@ const UserCalendarView = ({ userId }) => {
       console.log('Fetching tasks for user:', userId, 'from:', startDate, 'to:', endDate);
       const response = await api.get(`/calendar/tasks/?user=${userId}&start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`);
       console.log('Tasks response:', response.data);
-      setTasks(response.data.results || response.data);
+      const formatted = (response.data.results || response.data).map(t => ({
+        ...t,
+        start: new Date(t.deadline),
+      }));
+      setTasks(formatted);
     } catch (err) {
       console.error('Error fetching tasks:', err);
       setError('Не удалось загрузить задачи');
@@ -63,7 +71,35 @@ const UserCalendarView = ({ userId }) => {
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
+    setDateEventsDialogOpen(true);
+  };
+
+  const handleDateEventsDialogClose = () => {
+    setDateEventsDialogOpen(false);
+    setSelectedDate(null);
+  };
+
+  const handleAddTaskClick = (date) => {
+    setDateEventsDialogOpen(false);
+    setEditingTask(null);
+    setSelectedDate(date);
     setTaskFormOpen(true);
+  };
+
+  const handleEditTaskClick = (task) => {
+    setDateEventsDialogOpen(false);
+    setEditingTask(task);
+    setSelectedDate(new Date(task.deadline));
+    setTaskFormOpen(true);
+  };
+
+  const handleDeleteTask = async (task) => {
+    try {
+      await deleteCalendarTask(task.id);
+      fetchTasks();
+    } catch (e) {
+      console.error('Error deleting task', e);
+    }
   };
 
   const handleTaskFormClose = () => {
@@ -77,16 +113,16 @@ const UserCalendarView = ({ userId }) => {
     setSelectedDate(null);
   };
 
-  const days = eachDayOfInterval({
-    start: startOfMonth(currentDate),
-    end: endOfMonth(currentDate)
-  });
+  // Формируем сетку от понедельника перед первым днём месяца
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 }); // понедельник
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 }); // воскресенье
+
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   const getTasksForDay = (date) => {
-    return tasks.filter(task => {
-      const taskDate = new Date(task.deadline);
-      return taskDate.toDateString() === date.toDateString();
-    });
+    return tasks.filter(task => task.start.toDateString() === date.toDateString());
   };
 
   const getPriorityColor = (priority) => {
@@ -125,85 +161,89 @@ const UserCalendarView = ({ userId }) => {
         </Box>
       </Box>
 
-      <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(7, 1fr)', 
-        gap: 0.5,
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7, 1fr)',
+        gridAutoRows: '60px',
         flex: 1,
-        minHeight: 0,
-        '& > *': { 
-          aspectRatio: '1',
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-          position: 'relative',
-          cursor: 'pointer',
-          '&:hover': {
-            backgroundColor: 'action.hover'
-          }
-        }
+        border: '1px solid #e0e0e0',
+        borderTop: 'none' /* верхнюю границу даст шапка */
       }}>
-        {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => (
-          <Paper key={day} elevation={1} sx={{ p: 0.5, textAlign: 'center' }}>
-            <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}>
-              {day}
-            </Typography>
-          </Paper>
+        {/* Шапка дней недели */}
+        {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, idx) => (
+          <Box
+            key={day}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              fontSize: '0.75rem',
+              backgroundColor: idx >= 5 ? '#ffe0e0' : '#f0f2f5',
+              borderRight: idx === 6 ? 'none' : '1px solid #e0e0e0',
+              borderTop: '1px solid #e0e0e0',
+              borderBottom: '1px solid #d0d0d0'
+            }}
+          >
+            {day}
+          </Box>
         ))}
-        
+
+        {/* Дни месяца */}
         {days.map((date, index) => {
           const dayTasks = getTasksForDay(date);
           const isToday = isSameDay(date, new Date());
-          
+          const isWeekend = date.getDay() === 6 || date.getDay() === 0;
+          const isOtherMonth = !isSameMonth(date, currentDate);
+          const hasTasks = dayTasks.length > 0;
+
           return (
-            <Paper
+            <Box
               key={index}
-              elevation={1}
               onClick={() => handleDateClick(date)}
               sx={{
                 p: 0.5,
-                backgroundColor: isToday ? 'action.selected' : 'background.paper',
-                border: isToday ? '1px solid primary.main' : 'none',
-                '&:hover': {
-                  backgroundColor: 'action.hover'
-                }
+                backgroundColor: isToday
+                  ? '#eaf6ff'
+                  : isOtherMonth
+                  ? '#fafafa'
+                  : hasTasks
+                  ? '#e6f4ff'
+                  : isWeekend
+                  ? '#fff5f5'
+                  : 'background.paper',
+                borderRight: (index % 7 === 6) ? 'none' : '1px solid #e0e0e0',
+                borderBottom: '1px solid #e0e0e0',
+                position: 'relative',
+                cursor: 'pointer',
+                '&:hover': { backgroundColor: 'action.hover' },
+                color: isOtherMonth ? 'text.disabled' : 'text.primary'
               }}
             >
-              <Typography variant="caption" sx={{ mb: 0.5, fontSize: '0.7rem' }}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
                 {format(date, 'd')}
               </Typography>
               {dayTasks.length > 0 && (
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: 0.5,
-                  width: '100%',
-                  overflow: 'hidden'
-                }}>
-                  {dayTasks.slice(0, 2).map(task => (
-                    <Box
-                      key={task.id}
-                      sx={{
-                        width: '100%',
-                        height: '2px',
-                        backgroundColor: getPriorityColor(task.priority),
-                        borderRadius: '1px'
-                      }}
-                    />
-                  ))}
-                  {dayTasks.length > 2 && (
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.6rem' }}>
-                      +{dayTasks.length - 2}
-                    </Typography>
-                  )}
-                </Box>
+                <Typography variant="caption" sx={{ position: 'absolute', bottom: 4, right: 4, fontSize: '0.65rem', color: 'text.secondary' }}>
+                  {dayTasks.length}
+                </Typography>
               )}
-            </Paper>
+            </Box>
           );
         })}
       </Box>
+
+      {dateEventsDialogOpen && selectedDate && (
+        <DateEventsDialog
+          open={dateEventsDialogOpen}
+          onClose={handleDateEventsDialogClose}
+          date={selectedDate}
+          tasks={tasks}
+          onDeleteTask={handleDeleteTask}
+          onAddTask={handleAddTaskClick}
+          onEditTask={handleEditTaskClick}
+        />
+      )}
 
       {taskFormOpen && (
         <CalendarTaskForm
@@ -211,6 +251,7 @@ const UserCalendarView = ({ userId }) => {
           onClose={handleTaskFormClose}
           onTaskCreated={handleTaskCreated}
           initialDate={selectedDate}
+          taskToEdit={editingTask}
           userId={userId}
         />
       )}

@@ -10,246 +10,682 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('auth', '0012_alter_user_first_name_max_length'),
+        ("auth", "0012_alter_user_first_name_max_length"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Cargo',
+            name="Cargo",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('weight', models.PositiveIntegerField(validators=[django.core.validators.MinValueValidator(1, message='Вес должен быть больше 0.')], verbose_name='weight (kg)')),
-                ('volume', models.DecimalField(decimal_places=2, max_digits=5, validators=[django.core.validators.MinValueValidator(0.01, message='Объем должен быть больше 0.')], verbose_name='volume (m³)')),
-                ('tnved_code', models.CharField(blank=True, help_text='Код товарной номенклатуры', max_length=20, verbose_name='код ТН ВЭД')),
-                ('transport_conditions', models.TextField(blank=True, help_text='Температурный режим, требования к транспорту и т.д.', verbose_name='условия перевозки')),
-                ('cargo_value', models.DecimalField(decimal_places=2, default=0, help_text='Страховая стоимость груза', max_digits=10, verbose_name='стоимость груза')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "weight",
+                    models.PositiveIntegerField(
+                        validators=[django.core.validators.MinValueValidator(1, message="Вес должен быть больше 0.")],
+                        verbose_name="weight (kg)",
+                    ),
+                ),
+                (
+                    "volume",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=5,
+                        validators=[
+                            django.core.validators.MinValueValidator(0.01, message="Объем должен быть больше 0.")
+                        ],
+                        verbose_name="volume (m³)",
+                    ),
+                ),
+                (
+                    "tnved_code",
+                    models.CharField(
+                        blank=True, help_text="Код товарной номенклатуры", max_length=20, verbose_name="код ТН ВЭД"
+                    ),
+                ),
+                (
+                    "transport_conditions",
+                    models.TextField(
+                        blank=True,
+                        help_text="Температурный режим, требования к транспорту и т.д.",
+                        verbose_name="условия перевозки",
+                    ),
+                ),
+                (
+                    "cargo_value",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        help_text="Страховая стоимость груза",
+                        max_digits=10,
+                        verbose_name="стоимость груза",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Carrier',
+            name="Carrier",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('company_name', models.CharField(blank=True, max_length=255, null=True, verbose_name='Наименование компании')),
-                ('working_directions', models.TextField(blank=True, help_text='Укажите направления работы перевозчика', null=True, verbose_name='Направления работы')),
-                ('location', models.CharField(blank=True, help_text='Город/регион расположения', max_length=255, null=True, verbose_name='Расположение')),
-                ('fleet', models.TextField(blank=True, help_text='Информация об автопарке перевозчика', null=True, verbose_name='Автопарк')),
-                ('comments', models.TextField(blank=True, null=True, verbose_name='Комментарии')),
-                ('known_rates', models.TextField(blank=True, help_text='Информация о тарифах перевозчика', null=True, verbose_name='Известные тарифы')),
-                ('vehicle_number', models.CharField(blank=True, help_text='Номер транспортного средства или контейнера', max_length=50, null=True, verbose_name='Номер ТС или контейнера')),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "company_name",
+                    models.CharField(blank=True, max_length=255, null=True, verbose_name="Наименование компании"),
+                ),
+                (
+                    "working_directions",
+                    models.TextField(
+                        blank=True,
+                        help_text="Укажите направления работы перевозчика",
+                        null=True,
+                        verbose_name="Направления работы",
+                    ),
+                ),
+                (
+                    "location",
+                    models.CharField(
+                        blank=True,
+                        help_text="Город/регион расположения",
+                        max_length=255,
+                        null=True,
+                        verbose_name="Расположение",
+                    ),
+                ),
+                (
+                    "fleet",
+                    models.TextField(
+                        blank=True, help_text="Информация об автопарке перевозчика", null=True, verbose_name="Автопарк"
+                    ),
+                ),
+                ("comments", models.TextField(blank=True, null=True, verbose_name="Комментарии")),
+                (
+                    "known_rates",
+                    models.TextField(
+                        blank=True,
+                        help_text="Информация о тарифах перевозчика",
+                        null=True,
+                        verbose_name="Известные тарифы",
+                    ),
+                ),
+                (
+                    "vehicle_number",
+                    models.CharField(
+                        blank=True,
+                        help_text="Номер транспортного средства или контейнера",
+                        max_length=50,
+                        null=True,
+                        verbose_name="Номер ТС или контейнера",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
         ),
         migrations.CreateModel(
-            name='Client',
+            name="Client",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('company_name', models.CharField(max_length=255, verbose_name='Наименование компании')),
-                ('business_scope', models.CharField(blank=True, max_length=255, null=True, verbose_name='Сфера деятельности')),
-                ('address', models.TextField(blank=True, null=True, verbose_name='Адрес')),
-                ('bank_details', models.TextField(blank=True, null=True, verbose_name='Банковские реквизиты')),
-                ('unp', models.CharField(blank=True, max_length=9, null=True, verbose_name='УНП')),
-                ('unn', models.CharField(blank=True, max_length=9, null=True, verbose_name='УНН')),
-                ('okpo', models.CharField(blank=True, max_length=10, null=True, verbose_name='ОКПО')),
-                ('comments', models.TextField(blank=True, null=True, verbose_name='Комментарии')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("company_name", models.CharField(max_length=255, verbose_name="Наименование компании")),
+                (
+                    "business_scope",
+                    models.CharField(blank=True, max_length=255, null=True, verbose_name="Сфера деятельности"),
+                ),
+                ("address", models.TextField(blank=True, null=True, verbose_name="Адрес")),
+                ("bank_details", models.TextField(blank=True, null=True, verbose_name="Банковские реквизиты")),
+                ("unp", models.CharField(blank=True, max_length=9, null=True, verbose_name="УНП")),
+                ("unn", models.CharField(blank=True, max_length=9, null=True, verbose_name="УНН")),
+                ("okpo", models.CharField(blank=True, max_length=10, null=True, verbose_name="ОКПО")),
+                ("comments", models.TextField(blank=True, null=True, verbose_name="Комментарии")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                'verbose_name': 'Клиент',
-                'verbose_name_plural': 'Клиенты',
-                'ordering': ['-created_at'],
+                "verbose_name": "Клиент",
+                "verbose_name_plural": "Клиенты",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Payment',
+            name="Payment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(0.01)], verbose_name='сумма')),
-                ('payment_date', models.DateTimeField(auto_now_add=True, verbose_name='дата оплаты')),
-                ('method', models.CharField(choices=[('cash', 'Наличные'), ('card', 'Карта'), ('bank_transfer', 'Банковский перевод')], default='bank_transfer', max_length=20, verbose_name='способ оплаты')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=10,
+                        validators=[django.core.validators.MinValueValidator(0.01)],
+                        verbose_name="сумма",
+                    ),
+                ),
+                ("payment_date", models.DateTimeField(auto_now_add=True, verbose_name="дата оплаты")),
+                (
+                    "method",
+                    models.CharField(
+                        choices=[("cash", "Наличные"), ("card", "Карта"), ("bank_transfer", "Банковский перевод")],
+                        default="bank_transfer",
+                        max_length=20,
+                        verbose_name="способ оплаты",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Vehicle',
+            name="Vehicle",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('license_plate', models.CharField(max_length=20, unique=True, validators=[django.core.validators.RegexValidator(message="Номерной знак должен быть в формате: 'А123БВ77'.", regex='^[АВЕКМНОРСТУХABEKMHOPCTYX]\\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\\d{2,3}$')], verbose_name='license plate')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "license_plate",
+                    models.CharField(
+                        max_length=20,
+                        unique=True,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Номерной знак должен быть в формате: 'А123БВ77'.",
+                                regex="^[АВЕКМНОРСТУХABEKMHOPCTYX]\\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\\d{2,3}$",
+                            )
+                        ],
+                        verbose_name="license plate",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='CustomUser',
+            name="CustomUser",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('password', models.CharField(max_length=128, verbose_name='password')),
-                ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
-                ('is_superuser', models.BooleanField(default=False, help_text='Designates that this user has all permissions without explicitly assigning them.', verbose_name='superuser status')),
-                ('username', models.CharField(error_messages={'unique': 'A user with that username already exists.'}, help_text='Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.', max_length=150, unique=True, validators=[django.contrib.auth.validators.UnicodeUsernameValidator()], verbose_name='username')),
-                ('first_name', models.CharField(blank=True, max_length=150, verbose_name='first name')),
-                ('last_name', models.CharField(blank=True, max_length=150, verbose_name='last name')),
-                ('is_staff', models.BooleanField(default=False, help_text='Designates whether the user can log into this admin site.', verbose_name='staff status')),
-                ('is_active', models.BooleanField(default=True, help_text='Designates whether this user should be treated as active. Unselect this instead of deleting accounts.', verbose_name='active')),
-                ('date_joined', models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined')),
-                ('email', models.EmailField(error_messages={'unique': 'Пользователь с таким email уже существует.'}, max_length=254, unique=True, verbose_name='email address')),
-                ('role', models.CharField(choices=[('admin', 'Administrator'), ('manager', 'Manager'), ('client', 'Client')], default='client', max_length=20, verbose_name='role')),
-                ('groups', models.ManyToManyField(blank=True, related_name='customuser_groups', related_query_name='customuser', to='auth.group', verbose_name='groups')),
-                ('user_permissions', models.ManyToManyField(blank=True, related_name='customuser_permissions', related_query_name='customuser', to='auth.permission', verbose_name='user permissions')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("password", models.CharField(max_length=128, verbose_name="password")),
+                ("last_login", models.DateTimeField(blank=True, null=True, verbose_name="last login")),
+                (
+                    "is_superuser",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Designates that this user has all permissions without explicitly assigning them.",
+                        verbose_name="superuser status",
+                    ),
+                ),
+                (
+                    "username",
+                    models.CharField(
+                        error_messages={"unique": "A user with that username already exists."},
+                        help_text="Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.",
+                        max_length=150,
+                        unique=True,
+                        validators=[django.contrib.auth.validators.UnicodeUsernameValidator()],
+                        verbose_name="username",
+                    ),
+                ),
+                ("first_name", models.CharField(blank=True, max_length=150, verbose_name="first name")),
+                ("last_name", models.CharField(blank=True, max_length=150, verbose_name="last name")),
+                (
+                    "is_staff",
+                    models.BooleanField(
+                        default=False,
+                        help_text="Designates whether the user can log into this admin site.",
+                        verbose_name="staff status",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(
+                        default=True,
+                        help_text="Designates whether this user should be treated as active. Unselect this instead of deleting accounts.",
+                        verbose_name="active",
+                    ),
+                ),
+                ("date_joined", models.DateTimeField(default=django.utils.timezone.now, verbose_name="date joined")),
+                (
+                    "email",
+                    models.EmailField(
+                        error_messages={"unique": "Пользователь с таким email уже существует."},
+                        max_length=254,
+                        unique=True,
+                        verbose_name="email address",
+                    ),
+                ),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[("admin", "Administrator"), ("manager", "Manager"), ("client", "Client")],
+                        default="client",
+                        max_length=20,
+                        verbose_name="role",
+                    ),
+                ),
+                (
+                    "groups",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="customuser_groups",
+                        related_query_name="customuser",
+                        to="auth.group",
+                        verbose_name="groups",
+                    ),
+                ),
+                (
+                    "user_permissions",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="customuser_permissions",
+                        related_query_name="customuser",
+                        to="auth.permission",
+                        verbose_name="user permissions",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'user',
-                'verbose_name_plural': 'users',
+                "verbose_name": "user",
+                "verbose_name_plural": "users",
             },
             managers=[
-                ('objects', django.contrib.auth.models.UserManager()),
+                ("objects", django.contrib.auth.models.UserManager()),
             ],
         ),
         migrations.CreateModel(
-            name='CalendarEvent',
+            name="CalendarEvent",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=200, verbose_name='Название')),
-                ('description', models.TextField(blank=True, verbose_name='Описание')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_events', to=settings.AUTH_USER_MODEL, verbose_name='Создатель')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("title", models.CharField(max_length=200, verbose_name="Название")),
+                ("description", models.TextField(blank=True, verbose_name="Описание")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="created_events",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Создатель",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Событие календаря',
-                'verbose_name_plural': 'События календаря',
-                'ordering': ['-created_at'],
+                "verbose_name": "Событие календаря",
+                "verbose_name_plural": "События календаря",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='CarrierContact',
+            name="CarrierContact",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('contact_type', models.CharField(choices=[('manager', 'Менеджер'), ('director', 'Директор')], default='manager', max_length=20, verbose_name='Тип контакта')),
-                ('name', models.CharField(blank=True, max_length=100, null=True, verbose_name='Имя')),
-                ('phone', models.CharField(blank=True, max_length=20, null=True, validators=[django.core.validators.RegexValidator(message="Номер телефона должен быть в формате: '+375000000000'.", regex='^\\+375\\d{9}$')], verbose_name='Мобильный телефон')),
-                ('email', models.EmailField(blank=True, max_length=254, null=True, verbose_name='Email')),
-                ('skype', models.CharField(blank=True, max_length=100, null=True, verbose_name='Skype')),
-                ('telegram', models.CharField(blank=True, max_length=100, null=True, verbose_name='Telegram')),
-                ('carrier', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='contacts', to='api.carrier')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "contact_type",
+                    models.CharField(
+                        choices=[("manager", "Менеджер"), ("director", "Директор")],
+                        default="manager",
+                        max_length=20,
+                        verbose_name="Тип контакта",
+                    ),
+                ),
+                ("name", models.CharField(blank=True, max_length=100, null=True, verbose_name="Имя")),
+                (
+                    "phone",
+                    models.CharField(
+                        blank=True,
+                        max_length=20,
+                        null=True,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Номер телефона должен быть в формате: '+375000000000'.", regex="^\\+375\\d{9}$"
+                            )
+                        ],
+                        verbose_name="Мобильный телефон",
+                    ),
+                ),
+                ("email", models.EmailField(blank=True, max_length=254, null=True, verbose_name="Email")),
+                ("skype", models.CharField(blank=True, max_length=100, null=True, verbose_name="Skype")),
+                ("telegram", models.CharField(blank=True, max_length=100, null=True, verbose_name="Telegram")),
+                (
+                    "carrier",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="contacts", to="api.carrier"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ClientContact',
+            name="ClientContact",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('contact_type', models.CharField(choices=[('manager', 'Менеджер'), ('director', 'Директор')], default='manager', max_length=20, verbose_name='Тип контакта')),
-                ('name', models.CharField(blank=True, max_length=100, null=True, verbose_name='Имя')),
-                ('phone', models.CharField(blank=True, max_length=20, null=True, validators=[django.core.validators.RegexValidator(message="Номер телефона должен быть в формате: '+375000000000'.", regex='^\\+375\\d{9}$')], verbose_name='Мобильный телефон')),
-                ('email', models.EmailField(blank=True, max_length=254, null=True, verbose_name='Email')),
-                ('skype', models.CharField(blank=True, max_length=100, null=True, verbose_name='Skype')),
-                ('telegram', models.CharField(blank=True, max_length=100, null=True, verbose_name='Telegram')),
-                ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='contacts', to='api.client')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "contact_type",
+                    models.CharField(
+                        choices=[("manager", "Менеджер"), ("director", "Директор")],
+                        default="manager",
+                        max_length=20,
+                        verbose_name="Тип контакта",
+                    ),
+                ),
+                ("name", models.CharField(blank=True, max_length=100, null=True, verbose_name="Имя")),
+                (
+                    "phone",
+                    models.CharField(
+                        blank=True,
+                        max_length=20,
+                        null=True,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Номер телефона должен быть в формате: '+375000000000'.", regex="^\\+375\\d{9}$"
+                            )
+                        ],
+                        verbose_name="Мобильный телефон",
+                    ),
+                ),
+                ("email", models.EmailField(blank=True, max_length=254, null=True, verbose_name="Email")),
+                ("skype", models.CharField(blank=True, max_length=100, null=True, verbose_name="Skype")),
+                ("telegram", models.CharField(blank=True, max_length=100, null=True, verbose_name="Telegram")),
+                (
+                    "client",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="contacts", to="api.client"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('message', models.TextField(verbose_name='сообщение')),
-                ('notification_type', models.CharField(choices=[('email', 'Email'), ('sms', 'SMS'), ('telegram', 'Telegram')], default='email', max_length=20, verbose_name='тип уведомления')),
-                ('sent_at', models.DateTimeField(auto_now_add=True, verbose_name='дата отправки')),
-                ('is_read', models.BooleanField(default=False, verbose_name='прочитано')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("message", models.TextField(verbose_name="сообщение")),
+                (
+                    "notification_type",
+                    models.CharField(
+                        choices=[("email", "Email"), ("sms", "SMS"), ("telegram", "Telegram")],
+                        default="email",
+                        max_length=20,
+                        verbose_name="тип уведомления",
+                    ),
+                ),
+                ("sent_at", models.DateTimeField(auto_now_add=True, verbose_name="дата отправки")),
+                ("is_read", models.BooleanField(default=False, verbose_name="прочитано")),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notifications",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Order',
+            name="Order",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('new', 'Новый'), ('in_progress', 'В работе'), ('completed', 'Завершен'), ('cancelled', 'Отменен')], default='new', max_length=20, verbose_name='Статус')),
-                ('contract_date', models.DateField(blank=True, null=True, verbose_name='Дата заключения договора')),
-                ('contract_number', models.CharField(blank=True, max_length=50, null=True, verbose_name='Номер договора')),
-                ('transport_order_number', models.CharField(blank=True, max_length=50, null=True, verbose_name='Транспортный заказ номер')),
-                ('cargo_name', models.CharField(blank=True, max_length=255, null=True, verbose_name='Наименование груза')),
-                ('tnved_code', models.CharField(blank=True, max_length=20, null=True, verbose_name='Код ТНВЭД')),
-                ('cargo_danger', models.CharField(choices=[('none', 'Не опасный'), ('class1', 'Класс 1'), ('class2', 'Класс 2'), ('class3', 'Класс 3'), ('class4', 'Класс 4'), ('class5', 'Класс 5'), ('class6', 'Класс 6'), ('class7', 'Класс 7'), ('class8', 'Класс 8'), ('class9', 'Класс 9')], default='none', max_length=20, verbose_name='Опасность груза')),
-                ('cargo_weight', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Вес брутто (кг)')),
-                ('cargo_dimensions', models.CharField(blank=True, max_length=100, null=True, verbose_name='Габариты груза')),
-                ('cargo_volume', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Объем груза (м³)')),
-                ('loading_date', models.DateTimeField(blank=True, null=True, verbose_name='Дата загрузки')),
-                ('departure_date', models.DateTimeField(blank=True, null=True, verbose_name='Дата отправки')),
-                ('unloading_date', models.DateTimeField(blank=True, null=True, verbose_name='Дата выгрузки')),
-                ('loading_address', models.TextField(blank=True, null=True, verbose_name='Адрес загрузки')),
-                ('unloading_address', models.TextField(blank=True, null=True, verbose_name='Адрес выгрузки')),
-                ('route', models.TextField(blank=True, null=True, verbose_name='Маршрут')),
-                ('transport_type', models.CharField(blank=True, choices=[('truck', 'Грузовой автомобиль'), ('train', 'Железнодорожный транспорт'), ('ship', 'Морской транспорт'), ('air', 'Авиатранспорт')], max_length=20, null=True, verbose_name='Тип транспорта')),
-                ('delivery_terms', models.TextField(blank=True, null=True, verbose_name='Условия поставки')),
-                ('total_price', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Цена')),
-                ('shipper', models.CharField(blank=True, max_length=255, null=True, verbose_name='Грузоотправитель')),
-                ('destination', models.CharField(blank=True, max_length=255, null=True, verbose_name='Пункт назначения')),
-                ('notes', models.TextField(blank=True, null=True, verbose_name='Примечания')),
-                ('payment_status', models.CharField(choices=[('pending', 'Ожидает оплаты'), ('paid', 'Оплачено')], default='pending', max_length=20, verbose_name='Статус оплаты')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата обновления')),
-                ('carrier', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to='api.carrier', verbose_name='Перевозчик')),
-                ('client', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='api.client', verbose_name='Клиент')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("new", "Новый"),
+                            ("in_progress", "В работе"),
+                            ("completed", "Завершен"),
+                            ("cancelled", "Отменен"),
+                        ],
+                        default="new",
+                        max_length=20,
+                        verbose_name="Статус",
+                    ),
+                ),
+                ("contract_date", models.DateField(blank=True, null=True, verbose_name="Дата заключения договора")),
+                (
+                    "contract_number",
+                    models.CharField(blank=True, max_length=50, null=True, verbose_name="Номер договора"),
+                ),
+                (
+                    "transport_order_number",
+                    models.CharField(blank=True, max_length=50, null=True, verbose_name="Транспортный заказ номер"),
+                ),
+                (
+                    "cargo_name",
+                    models.CharField(blank=True, max_length=255, null=True, verbose_name="Наименование груза"),
+                ),
+                ("tnved_code", models.CharField(blank=True, max_length=20, null=True, verbose_name="Код ТНВЭД")),
+                (
+                    "cargo_danger",
+                    models.CharField(
+                        choices=[
+                            ("none", "Не опасный"),
+                            ("class1", "Класс 1"),
+                            ("class2", "Класс 2"),
+                            ("class3", "Класс 3"),
+                            ("class4", "Класс 4"),
+                            ("class5", "Класс 5"),
+                            ("class6", "Класс 6"),
+                            ("class7", "Класс 7"),
+                            ("class8", "Класс 8"),
+                            ("class9", "Класс 9"),
+                        ],
+                        default="none",
+                        max_length=20,
+                        verbose_name="Опасность груза",
+                    ),
+                ),
+                (
+                    "cargo_weight",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Вес брутто (кг)"
+                    ),
+                ),
+                (
+                    "cargo_dimensions",
+                    models.CharField(blank=True, max_length=100, null=True, verbose_name="Габариты груза"),
+                ),
+                (
+                    "cargo_volume",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Объем груза (м³)"
+                    ),
+                ),
+                ("loading_date", models.DateTimeField(blank=True, null=True, verbose_name="Дата загрузки")),
+                ("departure_date", models.DateTimeField(blank=True, null=True, verbose_name="Дата отправки")),
+                ("unloading_date", models.DateTimeField(blank=True, null=True, verbose_name="Дата выгрузки")),
+                ("loading_address", models.TextField(blank=True, null=True, verbose_name="Адрес загрузки")),
+                ("unloading_address", models.TextField(blank=True, null=True, verbose_name="Адрес выгрузки")),
+                ("route", models.TextField(blank=True, null=True, verbose_name="Маршрут")),
+                (
+                    "transport_type",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("truck", "Грузовой автомобиль"),
+                            ("train", "Железнодорожный транспорт"),
+                            ("ship", "Морской транспорт"),
+                            ("air", "Авиатранспорт"),
+                        ],
+                        max_length=20,
+                        null=True,
+                        verbose_name="Тип транспорта",
+                    ),
+                ),
+                ("delivery_terms", models.TextField(blank=True, null=True, verbose_name="Условия поставки")),
+                (
+                    "total_price",
+                    models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Цена"),
+                ),
+                ("shipper", models.CharField(blank=True, max_length=255, null=True, verbose_name="Грузоотправитель")),
+                (
+                    "destination",
+                    models.CharField(blank=True, max_length=255, null=True, verbose_name="Пункт назначения"),
+                ),
+                ("notes", models.TextField(blank=True, null=True, verbose_name="Примечания")),
+                (
+                    "payment_status",
+                    models.CharField(
+                        choices=[("pending", "Ожидает оплаты"), ("paid", "Оплачено")],
+                        default="pending",
+                        max_length=20,
+                        verbose_name="Статус оплаты",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Дата обновления")),
+                (
+                    "carrier",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to="api.carrier",
+                        verbose_name="Перевозчик",
+                    ),
+                ),
+                (
+                    "client",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="api.client",
+                        verbose_name="Клиент",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Заказ',
-                'verbose_name_plural': 'Заказы',
-                'ordering': ['-created_at'],
+                "verbose_name": "Заказ",
+                "verbose_name_plural": "Заказы",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Invoice',
+            name="Invoice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('total', models.DecimalField(decimal_places=2, max_digits=10, validators=[django.core.validators.MinValueValidator(0.01)], verbose_name='итоговая сумма')),
-                ('issued_date', models.DateTimeField(auto_now_add=True, verbose_name='дата выставления')),
-                ('due_date', models.DateTimeField(help_text='Дата, до которой должен быть оплачен счет', verbose_name='срок оплаты')),
-                ('is_paid', models.BooleanField(default=False, verbose_name='оплачен')),
-                ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invoices', to='api.client', verbose_name='Клиент')),
-                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invoices', to='api.order', verbose_name='Заказ')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "total",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=10,
+                        validators=[django.core.validators.MinValueValidator(0.01)],
+                        verbose_name="итоговая сумма",
+                    ),
+                ),
+                ("issued_date", models.DateTimeField(auto_now_add=True, verbose_name="дата выставления")),
+                (
+                    "due_date",
+                    models.DateTimeField(
+                        help_text="Дата, до которой должен быть оплачен счет", verbose_name="срок оплаты"
+                    ),
+                ),
+                ("is_paid", models.BooleanField(default=False, verbose_name="оплачен")),
+                (
+                    "client",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="invoices",
+                        to="api.client",
+                        verbose_name="Клиент",
+                    ),
+                ),
+                (
+                    "order",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="invoices",
+                        to="api.order",
+                        verbose_name="Заказ",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Document',
+            name="Document",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file', models.FileField(upload_to='documents/', validators=[django.core.validators.FileExtensionValidator(['pdf', 'docx'])], verbose_name='файл')),
-                ('name', models.CharField(max_length=255, verbose_name='название')),
-                ('document_type', models.CharField(choices=[('contract', 'Договор'), ('invoice', 'Счет'), ('act', 'Акт выполненных работ')], max_length=20, verbose_name='тип документа')),
-                ('is_signed', models.BooleanField(default=False, verbose_name='подписано')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='дата создания')),
-                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='api.order')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to="documents/",
+                        validators=[django.core.validators.FileExtensionValidator(["pdf", "docx"])],
+                        verbose_name="файл",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255, verbose_name="название")),
+                (
+                    "document_type",
+                    models.CharField(
+                        choices=[("contract", "Договор"), ("invoice", "Счет"), ("act", "Акт выполненных работ")],
+                        max_length=20,
+                        verbose_name="тип документа",
+                    ),
+                ),
+                ("is_signed", models.BooleanField(default=False, verbose_name="подписано")),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="дата создания")),
+                (
+                    "order",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="documents", to="api.order"
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Task',
+            name="Task",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(blank=True, max_length=200, null=True)),
-                ('description', models.TextField(blank=True, null=True)),
-                ('status', models.CharField(blank=True, choices=[('todo', 'To Do'), ('in_progress', 'In Progress'), ('done', 'Done')], default='todo', max_length=20, null=True)),
-                ('priority', models.CharField(blank=True, choices=[('low', 'Low'), ('medium', 'Medium'), ('high', 'High')], default='medium', max_length=20, null=True)),
-                ('start', models.DateTimeField(blank=True, null=True)),
-                ('end', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('assignee', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='tasks', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("title", models.CharField(blank=True, max_length=200, null=True)),
+                ("description", models.TextField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        blank=True,
+                        choices=[("todo", "To Do"), ("in_progress", "In Progress"), ("done", "Done")],
+                        default="todo",
+                        max_length=20,
+                        null=True,
+                    ),
+                ),
+                (
+                    "priority",
+                    models.CharField(
+                        blank=True,
+                        choices=[("low", "Low"), ("medium", "Medium"), ("high", "High")],
+                        default="medium",
+                        max_length=20,
+                        null=True,
+                    ),
+                ),
+                ("start", models.DateTimeField(blank=True, null=True)),
+                ("end", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "assignee",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="tasks",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='UserActionLog',
+            name="UserActionLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action', models.CharField(choices=[('create', 'Создание'), ('update', 'Обновление'), ('delete', 'Удаление')], max_length=10)),
-                ('model_name', models.CharField(max_length=50)),
-                ('object_id', models.PositiveIntegerField()),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('details', models.JSONField(default=dict)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "action",
+                    models.CharField(
+                        choices=[("create", "Создание"), ("update", "Обновление"), ("delete", "Удаление")],
+                        max_length=10,
+                    ),
+                ),
+                ("model_name", models.CharField(max_length=50)),
+                ("object_id", models.PositiveIntegerField()),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                ("details", models.JSONField(default=dict)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL
+                    ),
+                ),
             ],
         ),
     ]

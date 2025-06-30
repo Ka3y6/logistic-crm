@@ -5,29 +5,59 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0002_usersettings'),
+        ("api", "0002_usersettings"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='CalendarTask',
+            name="CalendarTask",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255, verbose_name='Название')),
-                ('description', models.TextField(blank=True, verbose_name='Описание')),
-                ('deadline', models.DateTimeField(verbose_name='Срок выполнения')),
-                ('priority', models.CharField(choices=[('low', 'Низкий'), ('medium', 'Средний'), ('high', 'Высокий')], default='medium', max_length=10, verbose_name='Приоритет')),
-                ('type', models.CharField(choices=[('loading', 'Загрузка'), ('departure', 'Отправка'), ('unloading', 'Выгрузка'), ('other', 'Другое')], default='other', max_length=20, verbose_name='Тип задачи')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата обновления')),
-                ('order', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='calendar_tasks', to='api.order', verbose_name='Связанный заказ')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("title", models.CharField(max_length=255, verbose_name="Название")),
+                ("description", models.TextField(blank=True, verbose_name="Описание")),
+                ("deadline", models.DateTimeField(verbose_name="Срок выполнения")),
+                (
+                    "priority",
+                    models.CharField(
+                        choices=[("low", "Низкий"), ("medium", "Средний"), ("high", "Высокий")],
+                        default="medium",
+                        max_length=10,
+                        verbose_name="Приоритет",
+                    ),
+                ),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("loading", "Загрузка"),
+                            ("departure", "Отправка"),
+                            ("unloading", "Выгрузка"),
+                            ("other", "Другое"),
+                        ],
+                        default="other",
+                        max_length=20,
+                        verbose_name="Тип задачи",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Дата обновления")),
+                (
+                    "order",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="calendar_tasks",
+                        to="api.order",
+                        verbose_name="Связанный заказ",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Задача календаря',
-                'verbose_name_plural': 'Задачи календаря',
-                'ordering': ['deadline'],
+                "verbose_name": "Задача календаря",
+                "verbose_name_plural": "Задачи календаря",
+                "ordering": ["deadline"],
             },
         ),
     ]

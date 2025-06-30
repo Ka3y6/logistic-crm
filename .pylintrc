@@ -1,0 +1,17 @@
+[MASTER]
+ignore=migrations,venv,env,__pycache__,static,staticfiles
+load-plugins=pylint_django
+django-settings-module=logistic_crm.settings
+# Добавляем каталог backend в PYTHONPATH, чтобы модули api, users и др. корректно импортировались
+init-hook="import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend'))"
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    invalid-name
+
+[FORMAT]
+max-line-length=120 

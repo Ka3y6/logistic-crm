@@ -4,22 +4,21 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0007_carrier_created_by_client_created_by_and_more'),
+        ("api", "0007_carrier_created_by_client_created_by_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='carrier',
-            name='created_by',
+            model_name="carrier",
+            name="created_by",
         ),
         migrations.RemoveField(
-            model_name='client',
-            name='created_by',
+            model_name="client",
+            name="created_by",
         ),
         migrations.RemoveField(
-            model_name='order',
-            name='created_by',
+            model_name="order",
+            name="created_by",
         ),
     ]

@@ -16,6 +16,8 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../api/api';
 
 const ClientForm = ({ open, onClose, onSubmit, client }) => {
   const [activeTab, setActiveTab] = useState(0);
@@ -32,11 +34,20 @@ const ClientForm = ({ open, onClose, onSubmit, client }) => {
     comments: '',
     contacts: []
   });
+  const { user } = useAuth();
+  const [usersList, setUsersList] = useState([]);
 
   useEffect(() => {
+    if (user?.role === 'admin') {
+      api.get('/users/').then(res => {
+        setUsersList(Array.isArray(res.data) ? res.data : res.data.results || []);
+      }).catch(() => {});
+    }
+
     if (client) {
       setFormData({
         ...client,
+        created_by_id: client.created_by?.id || '',
         contacts: Array.isArray(client.contacts) ? client.contacts : []
       });
     } else {
@@ -112,7 +123,11 @@ const ClientForm = ({ open, onClose, onSubmit, client }) => {
     }
 
     try {
-      await onSubmit(formData);
+      const payload = { ...formData };
+      if (user?.role === 'admin' && formData.created_by_id) {
+        payload.created_by_id = formData.created_by_id;
+      }
+      await onSubmit(payload);
       onClose();
     } catch (err) {
       setError(err.message || 'Произошла ошибка при сохранении');
@@ -165,6 +180,23 @@ const ClientForm = ({ open, onClose, onSubmit, client }) => {
             rows={3}
           />
         </Grid>
+        {user?.role === 'admin' && (
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Создатель</InputLabel>
+              <Select
+                label="Создатель"
+                name="created_by_id"
+                value={formData.created_by_id || ''}
+                onChange={handleChange}
+              >
+                {usersList.map(u => (
+                  <MenuItem key={u.id} value={u.id}>{u.email}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

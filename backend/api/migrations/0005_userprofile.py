@@ -6,30 +6,49 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0004_alter_calendartask_options_calendartask_created_by_and_more'),
+        ("api", "0004_alter_calendartask_options_calendartask_created_by_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='UserProfile',
+            name="UserProfile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('email_integration_enabled', models.BooleanField(default=False, verbose_name='Интеграция с почтой включена')),
-                ('imap_host', models.CharField(blank=True, max_length=255, null=True, verbose_name='IMAP Хост')),
-                ('imap_port', models.IntegerField(blank=True, null=True, verbose_name='IMAP Порт')),
-                ('imap_user', models.CharField(blank=True, max_length=255, null=True, verbose_name='IMAP Пользователь')),
-                ('imap_password_encrypted', models.BinaryField(blank=True, null=True, verbose_name='IMAP Пароль (зашифрован)')),
-                ('smtp_host', models.CharField(blank=True, max_length=255, null=True, verbose_name='SMTP Хост')),
-                ('smtp_port', models.IntegerField(blank=True, null=True, verbose_name='SMTP Порт')),
-                ('smtp_user', models.CharField(blank=True, max_length=255, null=True, verbose_name='SMTP Пользователь')),
-                ('smtp_password_encrypted', models.BinaryField(blank=True, null=True, verbose_name='SMTP Пароль (зашифрован)')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='profile', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "email_integration_enabled",
+                    models.BooleanField(default=False, verbose_name="Интеграция с почтой включена"),
+                ),
+                ("imap_host", models.CharField(blank=True, max_length=255, null=True, verbose_name="IMAP Хост")),
+                ("imap_port", models.IntegerField(blank=True, null=True, verbose_name="IMAP Порт")),
+                (
+                    "imap_user",
+                    models.CharField(blank=True, max_length=255, null=True, verbose_name="IMAP Пользователь"),
+                ),
+                (
+                    "imap_password_encrypted",
+                    models.BinaryField(blank=True, null=True, verbose_name="IMAP Пароль (зашифрован)"),
+                ),
+                ("smtp_host", models.CharField(blank=True, max_length=255, null=True, verbose_name="SMTP Хост")),
+                ("smtp_port", models.IntegerField(blank=True, null=True, verbose_name="SMTP Порт")),
+                (
+                    "smtp_user",
+                    models.CharField(blank=True, max_length=255, null=True, verbose_name="SMTP Пользователь"),
+                ),
+                (
+                    "smtp_password_encrypted",
+                    models.BinaryField(blank=True, null=True, verbose_name="SMTP Пароль (зашифрован)"),
+                ),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="profile", to=settings.AUTH_USER_MODEL
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Профиль пользователя',
-                'verbose_name_plural': 'Профили пользователей',
+                "verbose_name": "Профиль пользователя",
+                "verbose_name_plural": "Профили пользователей",
             },
         ),
     ]

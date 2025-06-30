@@ -1,1 +1,1 @@
-default_app_config = 'requests.apps.RequestsConfig' 
+default_app_config = "requests.apps.RequestsConfig"

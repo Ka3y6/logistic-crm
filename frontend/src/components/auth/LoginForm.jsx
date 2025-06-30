@@ -34,8 +34,7 @@ const LoginForm = () => {
       try {
         const response = await api.get('validate-token/');
         if (response.data.status === 'valid') {
-          const role = response.data.user.role.toLowerCase();
-          navigate(`/${role}/dashboard`);
+          navigate('/orders');
         } else {
           localStorage.removeItem('token');
         }

@@ -16,7 +16,7 @@ import {
     Badge,
 } from '@mui/material';
 import {
-    Dashboard as DashboardIcon,
+    ShoppingCart as OrdersIcon,
     Person as PersonIcon,
     Logout as LogoutIcon,
     Settings as SettingsIcon,
@@ -48,9 +48,9 @@ const Sidebar = () => {
 
     const menuItems = [
         {
-            path: '/dashboard',
-            icon: <DashboardIcon />,
-            label: 'Панель управления',
+            path: '/orders',
+            icon: <OrdersIcon />,
+            label: 'Заказы',
         },
         {
             path: '/profile',

@@ -1,14 +1,17 @@
-import httpx
+import json
 import logging
 import os
-import json
-from typing import List, Dict, Optional, Any
-from .tools import AVAILABLE_TOOLS
-from .models import AISettings
-from asgiref.sync import sync_to_async
+from typing import Any, Dict, List, Optional
+
 import aiohttp
+from asgiref.sync import sync_to_async
+
+from .models import AISettings
 
 logger = logging.getLogger(__name__)
+
+# Статусы HTTP
+HTTP_STATUS_OK = 200
 
 SYSTEM_PROMPT = """Ты - AI ассистент для CRM системы логистической компании. Твоя задача - помогать пользователям с их запросами, связанными с управлением заказами, клиентами, перевозчиками и другими аспектами логистического бизнеса.
 
@@ -26,7 +29,8 @@ SYSTEM_PROMPT = """Ты - AI ассистент для CRM системы лог
 
 Всегда отвечай профессионально и по существу."""
 
-referer = os.environ.get('OPENROUTER_REFERER', 'https://crm.greatline.by')
+referer = os.environ.get("OPENROUTER_REFERER", "https://crm.greatline.by")
+
 
 class OpenRouterClient:
     def __init__(self, user=None):
@@ -66,11 +70,11 @@ class OpenRouterClient:
             raise
 
     async def generate_response(
-        self, 
+        self,
         prompt: Optional[str],
         history: Optional[List[Dict[str, str]]] = None,
         tool_choice: str = "auto",
-        tool_results: Optional[List[Dict[str, Any]]] = None
+        tool_results: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         try:
             await self._init_settings()
@@ -93,14 +97,10 @@ class OpenRouterClient:
 
             if prompt:
                 messages.append({"role": "user", "content": prompt})
-            
+
             if tool_results:
                 for tool_call_id, result in tool_results:
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call_id,
-                        "content": result
-                    })
+                    messages.append({"role": "tool", "tool_call_id": tool_call_id, "content": result})
 
             data = {
                 "model": self.model,
@@ -111,18 +111,15 @@ class OpenRouterClient:
 
             try:
                 async with session.post(f"{self.base_url}/chat/completions", headers=headers, json=data) as response:
-                    if response.status == 200:
+                    if response.status == HTTP_STATUS_OK:
                         result = await response.json()
-                        content = result['choices'][0]['message']['content']
-                        
+                        content = result["choices"][0]["message"]["content"]
+
                         # Проверяем, является ли ответ вызовом инструмента
                         try:
                             content_json = json.loads(content)
-                            if isinstance(content_json, dict) and 'tool_calls' in content_json:
-                                return {
-                                    "type": "tool_calls",
-                                    "content": content_json['tool_calls']
-                                }
+                            if isinstance(content_json, dict) and "tool_calls" in content_json:
+                                return {"type": "tool_calls", "content": content_json["tool_calls"]}
                         except json.JSONDecodeError:
                             pass
 

@@ -49,7 +49,7 @@ const Register = () => {
     }
     try {
       await register(formData.name, formData.email, formData.password);
-      navigate('/dashboard');
+      navigate('/orders');
     } catch (err) {
       setError('Ошибка при регистрации');
     }

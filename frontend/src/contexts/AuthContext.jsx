@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       setError(null);
       
-      window.location.href = '/dashboard';
+      window.location.href = '/orders';
       return true;
     } catch (err) {
       if (!err.response) {

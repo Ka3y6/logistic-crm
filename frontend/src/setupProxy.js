@@ -12,7 +12,7 @@ module.exports = function(app) {
       target: targetUrl,
       changeOrigin: true,
       secure: false,
-      ws: true,
+      ws: false,
       pathRewrite: {
         '^/api': '/api' // Сохраняем префикс /api
       },

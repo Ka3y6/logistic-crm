@@ -4,30 +4,41 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='SiteRequest',
+            name="SiteRequest",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255, verbose_name='Имя')),
-                ('phone', models.CharField(max_length=20, verbose_name='Телефон')),
-                ('email', models.EmailField(max_length=254, verbose_name='Email')),
-                ('comment', models.TextField(blank=True, verbose_name='Комментарий')),
-                ('status', models.CharField(choices=[('new', 'Новая'), ('in_progress', 'В обработке'), ('completed', 'Завершена'), ('rejected', 'Отклонена')], default='new', max_length=20, verbose_name='Статус')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата обновления')),
-                ('source_domain', models.CharField(max_length=255, verbose_name='Домен источника')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("name", models.CharField(max_length=255, verbose_name="Имя")),
+                ("phone", models.CharField(max_length=20, verbose_name="Телефон")),
+                ("email", models.EmailField(max_length=254, verbose_name="Email")),
+                ("comment", models.TextField(blank=True, verbose_name="Комментарий")),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("new", "Новая"),
+                            ("in_progress", "В обработке"),
+                            ("completed", "Завершена"),
+                            ("rejected", "Отклонена"),
+                        ],
+                        default="new",
+                        max_length=20,
+                        verbose_name="Статус",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")),
+                ("updated_at", models.DateTimeField(auto_now=True, verbose_name="Дата обновления")),
+                ("source_domain", models.CharField(max_length=255, verbose_name="Домен источника")),
             ],
             options={
-                'verbose_name': 'Заявка с сайта',
-                'verbose_name_plural': 'Заявки с сайта',
-                'ordering': ['-created_at'],
+                "verbose_name": "Заявка с сайта",
+                "verbose_name_plural": "Заявки с сайта",
+                "ordering": ["-created_at"],
             },
         ),
     ]

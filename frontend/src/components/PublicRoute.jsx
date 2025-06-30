@@ -44,9 +44,9 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  // Если пользователь авторизован, перенаправляем на дашбоард
+  // Если пользователь авторизован, перенаправляем на страницу заказов
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/orders" replace />;
   }
 
   return children;

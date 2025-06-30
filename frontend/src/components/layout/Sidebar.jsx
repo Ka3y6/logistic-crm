@@ -10,7 +10,6 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
   ShoppingCart as OrdersIcon,
   People as ClientsIcon,
   Description as DocumentsIcon,
@@ -19,7 +18,6 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   CalendarToday as CalendarIcon,
-  Chat as ChatIcon,
   Email as EmailIcon,
   SupervisorAccount as UsersIcon,
   Feedback as FeedbackIcon,
@@ -44,11 +42,6 @@ function Sidebar({ isOpen }) {
   };
 
   const menuItems = [
-    {
-      text: 'Дашборд',
-      icon: <DashboardIcon />,
-      path: '/dashboard',
-    },
     {
       text: 'Заказы',
       icon: <OrdersIcon />,
@@ -80,11 +73,6 @@ function Sidebar({ isOpen }) {
       text: 'Календарь',
       icon: <CalendarIcon />,
       path: '/calendar',
-    },
-    {
-      text: 'Чат',
-      icon: <ChatIcon />,
-      path: '/chat',
     },
     {
       text: 'Почта',

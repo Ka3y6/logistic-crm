@@ -154,6 +154,7 @@ const UsersPage = () => {
       const submitData = { ...formData };
       
       if (editingUser) {
+        delete submitData.id;
         if (!submitData.password) {
           delete submitData.password;
         }
