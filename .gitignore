@@ -52,4 +52,8 @@ docker-compose.override.yml
 
 # System
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Generated documents (создаются сервисом, не храним в Git)
+backend/documents/**/*.doc*
+backend/documents/**/*.xls* 
