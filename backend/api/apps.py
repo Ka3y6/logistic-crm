@@ -7,4 +7,4 @@ class ApiConfig(AppConfig):
 
     def ready(self):
         # Импортируем модели здесь, чтобы зарегистрировать сигналы
-        import api.models
+        pass

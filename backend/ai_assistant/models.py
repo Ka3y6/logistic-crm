@@ -25,8 +25,3 @@ class AISettings(models.Model):
 
     def __str__(self):
         return f"AI Settings for {self.user.email if self.user else 'System'} (Updated: {self.updated_at})"
-
-        unique_together = ["user"]
-
-    def __str__(self):
-        return f"AI Settings for {self.user.email if self.user else 'System'} (Updated: {self.updated_at})"

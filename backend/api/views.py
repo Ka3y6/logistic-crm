@@ -1,31 +1,38 @@
 import csv
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Optional, Tuple
 
 import pandas as pd
-from django.apps import apps
-from django.contrib.auth import authenticate
+
+# noqa comments for late imports (E402)
+from django.conf import settings  # noqa: E402
+from django.contrib.auth import get_user_model  # noqa: E402
 from django.core.files import File
-from django.db.models import Q, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum, Value
+from django.db.models.functions import Coalesce, TruncDate
 from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.utils.deprecation import MiddlewareMixin
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from django_filters.rest_framework import DjangoFilterBackend
-from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, permissions, status, viewsets
+from rest_framework.authentication import SessionAuthentication  # noqa: E402
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes
-from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.filters import SearchFilter
+
+# from docxtpl import DocxTemplate
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .email_service import (
+from .authentication import CustomTokenAuthentication
+from .email_service import (  # noqa: F401
     ERR_TYPE_AUTHENTICATION,  # Импортируем типы ошибок
     ERR_TYPE_CONFIG,
     ERR_TYPE_CONNECTION,
@@ -38,25 +45,6 @@ from .email_service import (
     send_email,
     set_email_flags,
 )
-from .models import TableHighlight, UserProfile
-from .serializers import TableHighlightSerializer, UserProfileEmailSettingsSerializer
-from .utils import extract_contact_info, normalize_phone
-
-logger = logging.getLogger(__name__)
-
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.core.mail import send_mail
-from django.db import models
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-
-# from docxtpl import DocxTemplate
-from rest_framework.pagination import PageNumberPagination
-from rest_framework_simplejwt.tokens import RefreshToken
-
-from .authentication import CustomTokenAuthentication
 from .models import (
     CalendarTask,
     Cargo,
@@ -72,6 +60,7 @@ from .models import (
     Payment,
     TableHighlight,
     Task,
+    UserProfile,
     UserSettings,
     Vehicle,
 )
@@ -80,7 +69,6 @@ from .serializers import (
     CalendarTaskSerializer,
     CargoSerializer,
     CarrierSerializer,
-    ClientListSerializer,
     ClientSerializer,
     DocumentSerializer,
     InvoiceSerializer,
@@ -89,14 +77,18 @@ from .serializers import (
     OrderSerializer,
     PaymentSerializer,
     ProfileSerializer,
+    TableHighlightSerializer,
     TaskSerializer,
+    UserProfileEmailSettingsSerializer,
     UserSerializer,
     UserSettingsSerializer,
     VehicleSerializer,
 )
 from .services.document_generator import generate_document
+from .utils import extract_contact_info
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class RequestLoggingMiddleware(MiddlewareMixin):
@@ -109,7 +101,6 @@ class RequestLoggingMiddleware(MiddlewareMixin):
             logger.info(f"Request auth: {request.auth}")
         else:
             logger.info("Request auth: Not available")
-        return None
 
     def process_response(self, request, response):
         logger.info(f"Response status: {response.status_code}")
@@ -596,31 +587,149 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return Response(InvoiceSerializer(invoice).data, status=201)
 
 
-class FinancialReportView(APIView):
-    permission_classes = [IsAuthenticated, IsManager]
+class FinanceReportView(APIView):
+    """Возвращает расширенный финансовый отчёт за произвольный период.
+
+    Формат ответа соответствует ожиданиям фронтенда:
+    {
+        "total_revenue": 100000,
+        "revenue_trend": 12.5,
+        "total_orders": 45,
+        "orders_trend": -3.8,
+        "average_order_value": 2222,
+        "average_order_trend": 5.1,
+        "profit": 15000,
+        "profit_trend": 9.4,
+        "daily_stats": [ { … }, … ]
+    }
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
+    authentication_classes = [CustomTokenAuthentication, SessionAuthentication]
+
+    def _percent_change(self, current, previous):
+        if previous in (None, 0):
+            return 0
+        return round(((current - previous) / previous) * 100, 2)
 
     def get(self, request):
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
-        start = datetime.strptime(start_date, "%Y-%m-%d")
-        end = datetime.strptime(end_date, "%Y-%m-%d")
 
-        total_income = (
-            Order.objects.filter(created_at__range=(start, end)).aggregate(total=Sum("total_price"))["total"] or 0
+        if not start_date or not end_date:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d")
+        except ValueError:
+            return Response({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+
+        # Текущий период
+        orders = Order.objects.filter(created_at__date__range=(start, end))
+
+        zero_decimal = Value(0, output_field=DecimalField(max_digits=12, decimal_places=2))
+        revenue_agg = orders.aggregate(
+            total_revenue=Coalesce(
+                Sum("total_price"), zero_decimal, output_field=DecimalField(max_digits=12, decimal_places=2)
+            )
+        )
+        total_revenue = revenue_agg["total_revenue"]
+
+        total_orders = orders.count()
+
+        profit_agg = orders.aggregate(
+            total_profit=Coalesce(
+                Sum(
+                    ExpressionWrapper(
+                        Coalesce(F("client_rate"), F("total_price"), zero_decimal)
+                        - Coalesce(F("carrier_rate"), zero_decimal),
+                        output_field=DecimalField(max_digits=12, decimal_places=2),
+                    )
+                ),
+                zero_decimal,
+            )
+        )
+        profit = profit_agg["total_profit"] or 0
+
+        average_order_value = round(total_revenue / total_orders, 2) if total_orders else 0
+
+        # Предыдущий период такой же длительности
+        period_delta = end - start
+        prev_start = start - period_delta - timedelta(days=1)
+        prev_end = start - timedelta(days=1)
+
+        prev_orders = Order.objects.filter(created_at__date__range=(prev_start, prev_end))
+        prev_revenue = prev_orders.aggregate(
+            total=Coalesce(Sum("total_price"), zero_decimal, output_field=DecimalField(max_digits=12, decimal_places=2))
+        )["total"]
+        prev_total_orders = prev_orders.count()
+        prev_average_order = round(prev_revenue / prev_total_orders, 2) if prev_total_orders else 0
+        prev_profit = (
+            prev_orders.aggregate(
+                total_profit=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            Coalesce(F("client_rate"), F("total_price"), zero_decimal)
+                            - Coalesce(F("carrier_rate"), zero_decimal),
+                            output_field=DecimalField(max_digits=12, decimal_places=2),
+                        )
+                    ),
+                    zero_decimal,
+                )
+            )["total_profit"]
+            or 0
         )
 
-        total_expenses = (
-            Payment.objects.filter(payment_date__range=(start, end)).aggregate(total=Sum("amount"))["total"] or 0
+        # Ежедневная статистика
+        daily_qs = (
+            orders.annotate(date=TruncDate("created_at"))
+            .values("date")
+            .annotate(
+                revenue=Coalesce(
+                    Sum("total_price"), zero_decimal, output_field=DecimalField(max_digits=12, decimal_places=2)
+                ),
+                orders=Count("id"),
+                profit=Coalesce(
+                    Sum(
+                        ExpressionWrapper(
+                            Coalesce(F("client_rate"), F("total_price"), zero_decimal)
+                            - Coalesce(F("carrier_rate"), zero_decimal),
+                            output_field=DecimalField(max_digits=12, decimal_places=2),
+                        )
+                    ),
+                    zero_decimal,
+                ),
+            )
+            .order_by("date")
         )
 
-        return Response(
-            {
-                "period": f"{start_date} - {end_date}",
-                "total_income": total_income,
-                "total_expenses": total_expenses,
-                "net_profit": total_income - total_expenses,
-            }
-        )
+        daily_stats = []
+        for row in daily_qs:
+            avg_val = round(row["revenue"] / row["orders"], 2) if row["orders"] else 0
+            daily_stats.append(
+                {
+                    "date": row["date"].isoformat(),
+                    "revenue": float(row["revenue"]),
+                    "orders": row["orders"],
+                    "average_order_value": avg_val,
+                    "profit": float(row["profit"]),
+                }
+            )
+
+        response = {
+            "total_revenue": float(total_revenue),
+            "revenue_trend": self._percent_change(total_revenue, prev_revenue),
+            "total_orders": total_orders,
+            "orders_trend": self._percent_change(total_orders, prev_total_orders),
+            "average_order_value": average_order_value,
+            "average_order_trend": self._percent_change(average_order_value, prev_average_order),
+            "profit": float(profit),
+            "profit_trend": self._percent_change(profit, prev_profit),
+            "daily_stats": daily_stats,
+        }
+
+        return Response(response)
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
@@ -834,8 +943,8 @@ class CarrierViewSet(viewsets.ModelViewSet):
                 # Логируем данные для создания перевозчика
                 logger.info(f"Данные для создания перевозчика: {carrier_data}")
 
-                # Создаем перевозчика
-                carrier = Carrier.objects.create(**carrier_data)
+                # Создаем перевозчика и привязываем к текущему пользователю, чтобы он был виден в его списке
+                carrier = Carrier.objects.create(**carrier_data, created_by=request.user)
 
                 # Обрабатываем контактную информацию
                 contact_info = row.get("contact_info", "")
@@ -919,15 +1028,26 @@ class CalendarTaskViewSet(viewsets.ModelViewSet):
         return queryset.order_by("deadline")
 
     def perform_create(self, serializer):
-        logger.info(f"Creating task with data: {serializer.validated_data}")
-        logger.info(f"Current user: {self.request.user}")
-        logger.info(f"Auth header: {self.request.META.get('HTTP_AUTHORIZATION')}")
-        logger.info(f"All headers: {self.request.META}")
+        """Создание задачи календаря.
 
-        if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user, assignee=self.request.user)
-        else:
+        • Если автор запроса ‑ администратор и в данных передан исполнитель, используем его.
+        • Для всех остальных случаев (или если исполнитель не указан) назначаем задачу
+          на самого создателя.
+        """
+
+        user = self.request.user
+
+        if not user.is_authenticated:
             raise permissions.PermissionDenied("Authentication required")
+
+        # Попытка взять переданного assignee (serializer.validated_data уже содержит объект)
+        assignee = serializer.validated_data.get("assignee")
+
+        if assignee is None or (assignee != user and user.role != CustomUser.RoleChoices.ADMIN):
+            # либо не передан, либо пользователь не админ, либо пытается назначить не себя
+            assignee = user
+
+        serializer.save(created_by=user, assignee=assignee)
 
 
 class UserProfileEmailSettingsView(generics.RetrieveUpdateAPIView):
@@ -1004,7 +1124,7 @@ class EmailMessageListView(APIView):
             # Логируем содержимое первого письма для отладки
             if result.get("emails") and len(result["emails"]) > 0:
                 first_email = result["emails"][0]
-                logger.debug(f"Пример содержимого письма:")
+                logger.debug("Пример содержимого письма:")
                 logger.debug(f"- ID: {first_email.get('id')}")
                 logger.debug(f"- Subject: {first_email.get('subject')}")
                 logger.debug(f"- From: {first_email.get('from')}")
@@ -1157,8 +1277,6 @@ class TableHighlightViewSet(viewsets.ModelViewSet):
             return Response(results, status=status.HTTP_400_BAD_REQUEST)
         return Response(results, status=status.HTTP_200_OK)
 
-    # Переопределяем create/update/destroy, чтобы они не использовались напрямую
-    # или добавляем логику для установки user=request.user
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 

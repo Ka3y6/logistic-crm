@@ -15,16 +15,8 @@ function Unauthorized() {
     navigate(-1);
   };
 
-  const handleGoToDashboard = () => {
-    if (user?.role?.toLowerCase() === 'admin') {
-      navigate('/dashboard');
-    } else if (user?.role?.toLowerCase() === 'manager') {
-      navigate('/dashboard/manager');
-    } else if (user?.role?.toLowerCase() === 'client') {
-      navigate('/dashboard/client');
-    } else {
-      navigate('/login');
-    }
+  const handleGoToOrders = () => {
+    navigate('/orders');
   };
 
   return (
@@ -72,10 +64,10 @@ function Unauthorized() {
           {user ? (
             <Button
               variant="contained"
-              onClick={handleGoToDashboard}
+              onClick={handleGoToOrders}
               color="primary"
             >
-              На панель управления
+              К заказам
             </Button>
           ) : (
             <Button

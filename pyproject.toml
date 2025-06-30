@@ -1,3 +1,15 @@
 [tool.black]
 line-length = 120
-exclude = '(\.venv|env|migrations|__pycache__)' 
+exclude = '(\.venv|env|migrations|__pycache__)'
+
+[tool.ruff]
+# Общие настройки
+line-length = 120
+
+[tool.ruff.lint]
+# Включённые семейства правил (Ошибки, Предупреждения, Импорт и т.д.)
+select = ["E", "F", "W", "I", "PL"]
+# Игнорируем длинные строки – постепенно можно убрать
+ignore = ["E501", "W291", "W292"]
+# Исключаем служебные каталоги
+exclude = ["migrations", "__pycache__", "venv", "env"] 

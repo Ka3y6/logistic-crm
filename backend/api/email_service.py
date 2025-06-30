@@ -1,18 +1,19 @@
+# flake8: noqa: E722  # Разрешаем bare except в этом модуле временно
+
 import email
 import imaplib
 import logging
-import re  # Добавляем re для очистки имен папок
+import re  # Для очистки имен папок
 import smtplib
 import socket  # Для обработки ошибок подключения
 import ssl
 from datetime import datetime
 from email.header import decode_header, make_header
 from email.message import EmailMessage
-from email.utils import parsedate_to_datetime
 from typing import Dict, List, Optional, Tuple
 
-from django.utils import timezone  # Импортируем timezone
-from imapclient import IMAPClient  # Добавляем импорт IMAPClient
+from django.utils import timezone  # noqa: F401 Импортируем timezone
+from imapclient import IMAPClient  # noqa: F401 Добавляем импорт IMAPClient
 
 from .encryption_utils import decrypt_data
 from .models import UserProfile
@@ -48,6 +49,15 @@ GMAIL_MAILBOXES = {
 
 # Попробуем определить атрибуты и разделитель
 MAILBOX_LIST_REGEX = re.compile(r'\\((?P<flags>.*?)\\) \"(?P<delimiter>.*)\" \"?(?P<name>[^"]+)\"?')
+
+
+# Пользовательское исключение для ошибок почты
+class EmailError(Exception):
+    """Специализированное исключение для почтовых операций."""
+
+    def __init__(self, err_type: str, message: str):
+        self.err_type = err_type
+        super().__init__(message)
 
 
 def _get_user_credentials(user) -> Optional[Tuple[Dict[str, str], Optional[Tuple[str, str]]]]:
@@ -219,30 +229,29 @@ def fetch_emails(user_email, mailbox="INBOX", limit=25, offset=0):
         # Для Gmail
         if isinstance(user_email, str) and "gmail.com" in user_email.lower():
             mailbox_variants = [mailbox, f"[Gmail]/{mailbox}", f"INBOX.{mailbox}", f"INBOX/{mailbox}"]
-        # Для других серверов
+        # Папка «Исходящие» (Outgoing / Sent)
+        # Обрабатываем как английские, так и русские варианты названия
+        elif any(keyword in mailbox.lower() for keyword in ["sent", "отправ"]):
+            mailbox_variants = [
+                "INBOX.Sent",
+                "INBOX.Sent Items",
+                "Sent",
+                "Sent Items",
+                "Отправленные",
+                "INBOX.Отправленные",
+            ]
+        # Стандартные варианты для папки "Входящие"
+        elif "inbox" in mailbox.lower():
+            mailbox_variants = ["INBOX"]
+        # Стандартные варианты для папки "Черновики"
+        elif "draft" in mailbox.lower():
+            mailbox_variants = ["INBOX.Drafts", "Drafts", "Черновики", "INBOX.Черновики"]
+        # Стандартные варианты для папки "Корзина"
+        elif "trash" in mailbox.lower():
+            mailbox_variants = ["INBOX.Trash", "Trash", "Корзина", "INBOX.Корзина"]
+        # Для остальных папок
         else:
-            # Стандартные варианты для папки "Отправленные"
-            if "отправлен" in mailbox.lower():
-                mailbox_variants = [
-                    "INBOX.Sent",
-                    "INBOX.Sent Items",
-                    "Sent",
-                    "Sent Items",
-                    "Отправленные",
-                    "INBOX.Отправленные",
-                ]
-            # Стандартные варианты для папки "Входящие"
-            elif "inbox" in mailbox.lower():
-                mailbox_variants = ["INBOX"]
-            # Стандартные варианты для папки "Черновики"
-            elif "draft" in mailbox.lower():
-                mailbox_variants = ["INBOX.Drafts", "Drafts", "Черновики", "INBOX.Черновики"]
-            # Стандартные варианты для папки "Корзина"
-            elif "trash" in mailbox.lower():
-                mailbox_variants = ["INBOX.Trash", "Trash", "Корзина", "INBOX.Корзина"]
-            # Для остальных папок
-            else:
-                mailbox_variants = [f"INBOX.{mailbox}", mailbox, f"INBOX/{mailbox}"]
+            mailbox_variants = [f"INBOX.{mailbox}", mailbox, f"INBOX/{mailbox}"]
 
         logger.info(f"Варианты имен папок для {user_email}: {mailbox_variants}")
 
@@ -405,7 +414,7 @@ def _connect_and_login(credentials: Dict[str, str]) -> Tuple[Optional[imaplib.IM
             logger.error(msg)
             try:
                 mail.shutdown()  # Используем shutdown вместо logout, если логин не удался
-            except:
+            except Exception:
                 pass
             return None, (ERR_TYPE_AUTHENTICATION, msg)
         logger.info(f"Успешный вход IMAP для {credentials['imap_user']}")

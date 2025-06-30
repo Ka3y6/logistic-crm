@@ -1,7 +1,6 @@
 import logging
 import re
 
-from django.contrib.auth import authenticate
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -76,6 +75,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ("id", "email", "role", "username", "first_name", "last_name", "password")
+        read_only_fields = ("id",)  # запрет на изменение первичного ключа
         extra_kwargs = {
             "password": {"write_only": True, "required": False},
             "email": {"required": True},
@@ -110,11 +110,20 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         try:
+            logger.info(f"UserSerializer.update initial validated_data: {validated_data}")
             password = validated_data.pop("password", None)
+            # Игнорируем попытку изменить первичный ключ, если присутствует
+            if "id" in validated_data:
+                logger.warning("Attempt to update primary key detected; removing 'id' from data")
+                validated_data.pop("id")
+            logger.info(f"UserSerializer.update cleaned validated_data: {validated_data}")
+
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
+
             if password:
                 instance.set_password(password)
+
             instance.save()
             return instance
         except Exception as e:
@@ -141,6 +150,10 @@ class CarrierContactSerializer(ContactSerializer):
 class ClientSerializer(serializers.ModelSerializer):
     contacts = ClientContactSerializer(many=True, required=False)
     has_active_order = serializers.BooleanField(read_only=True)
+    created_by = UserSerializer(read_only=True)
+    created_by_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source="created_by", write_only=True, required=False, allow_null=True
+    )
 
     class Meta:
         model = Client
@@ -158,12 +171,15 @@ class ClientSerializer(serializers.ModelSerializer):
             "contacts",
             "created_at",
             "updated_at",
+            "created_by",
+            "created_by_id",
         ]
-        read_only_fields = ("created_at", "updated_at")
+        read_only_fields = ("created_at", "updated_at", "created_by")
 
     def create(self, validated_data):
         contacts_data = validated_data.pop("contacts", [])
-        client = Client.objects.create(**validated_data)
+        created_by = validated_data.pop("created_by", None) or self.context["request"].user
+        client = Client.objects.create(created_by=created_by, **validated_data)
 
         for contact_data in contacts_data:
             ClientContact.objects.create(client=client, **contact_data)
@@ -172,6 +188,7 @@ class ClientSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         contacts_data = validated_data.pop("contacts", [])
+        created_by = validated_data.pop("created_by", None)
 
         # Обновляем основные поля
         for attr, value in validated_data.items():
@@ -186,6 +203,10 @@ class ClientSerializer(serializers.ModelSerializer):
             # Создаем новые контакты
             for contact_data in contacts_data:
                 ClientContact.objects.create(client=instance, **contact_data)
+
+        if created_by is not None and self.context["request"].user.role == "admin":
+            instance.created_by = created_by
+            instance.save(update_fields=["created_by"])
 
         return instance
 
@@ -239,6 +260,15 @@ class OrderSerializer(serializers.ModelSerializer):
             "transport_type",
             "contract_number",
             "total_price",
+            "payment_currency",
+            "carrier_rate",
+            "client_rate",
+            "price_usd",
+            "cost_with_vat",
+            "cost_without_vat",
+            "vat_rate",
+            "margin_income",
+            "demurrage_amount",
             "created_at",
             "shipper",
             "destination",
@@ -380,6 +410,10 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class CarrierSerializer(serializers.ModelSerializer):
     contacts = CarrierContactSerializer(many=True, required=False)
+    created_by = UserSerializer(read_only=True)
+    created_by_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source="created_by", write_only=True, required=False, allow_null=True
+    )
 
     class Meta:
         model = Carrier
@@ -395,12 +429,15 @@ class CarrierSerializer(serializers.ModelSerializer):
             "vehicle_number",
             "created_at",
             "updated_at",
+            "created_by",
+            "created_by_id",
         ]
-        read_only_fields = ("created_at", "updated_at")
+        read_only_fields = ("created_at", "updated_at", "created_by")
 
     def create(self, validated_data):
         contacts_data = validated_data.pop("contacts", [])
-        carrier = Carrier.objects.create(**validated_data)
+        created_by = validated_data.pop("created_by", None) or self.context["request"].user
+        carrier = Carrier.objects.create(created_by=created_by, **validated_data)
 
         for contact_data in contacts_data:
             CarrierContact.objects.create(carrier=carrier, **contact_data)
@@ -409,6 +446,7 @@ class CarrierSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         contacts_data = validated_data.pop("contacts", [])
+        created_by = validated_data.pop("created_by", None)
 
         # Обновляем основные поля
         for attr, value in validated_data.items():
@@ -423,6 +461,9 @@ class CarrierSerializer(serializers.ModelSerializer):
             # Создаем новые контакты
             for contact_data in contacts_data:
                 CarrierContact.objects.create(carrier=instance, **contact_data)
+
+        if created_by is not None and self.context["request"].user.role == "admin":
+            instance.created_by = created_by
 
         return instance
 
@@ -480,6 +521,9 @@ class CalendarTaskSerializer(serializers.ModelSerializer):
         queryset=CustomUser.objects.all(), source="assignee", write_only=True, required=False
     )
     order = OrderSerializer(read_only=True)
+    order_id = serializers.PrimaryKeyRelatedField(
+        queryset=Order.objects.all(), source="order", write_only=True, required=False, allow_null=True
+    )
 
     class Meta:
         model = CalendarTask
@@ -491,6 +535,7 @@ class CalendarTaskSerializer(serializers.ModelSerializer):
             "priority",
             "type",
             "order",
+            "order_id",
             "created_by",
             "assignee",
             "assignee_id",

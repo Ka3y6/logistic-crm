@@ -7,7 +7,7 @@ from mysql.connector import Error
 def test_connection():
     # Сначала проверим DNS
     try:
-        print(f"Проверка DNS для s2.open.by...")
+        print("Проверка DNS для s2.open.by...")
         ip_address = socket.gethostbyname("s2.open.by")
         print(f"IP адрес сервера: {ip_address}")
     except socket.gaierror as e:

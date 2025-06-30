@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models.signals import post_save
@@ -520,10 +521,13 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def save_user_profile(sender, instance, **kwargs):
-    try:
-        instance.profile.save()
-    except UserProfile.DoesNotExist:
-        UserProfile.objects.create(user=instance)
+    """Создаём профиль при первом сохранении или если он был удалён.
+
+    Используем get_or_create, чтобы надёжно избежать попытки повторного
+    создания записи с уже существующим первичным ключом и, как следствие,
+    ошибки Duplicate entry ... for key 'PRIMARY'.
+    """
+    UserProfile.objects.get_or_create(user=instance)
 
 
 class TableHighlight(models.Model):

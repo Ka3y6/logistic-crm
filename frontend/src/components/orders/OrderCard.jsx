@@ -27,9 +27,10 @@ const OrderCard = ({ open, onClose, order }) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatMoney = (amount, currency = '₽') => {
-    if (!amount) return '-';
-    return `${amount} ${currency}`;
+  const formatMoney = (amount, currencyCode = order?.payment_currency || 'RUB') => {
+    if (!amount && amount !== 0) return '-';
+    const code = currencyCode || 'RUB';
+    return `${amount} ${code}`;
   };
 
   const renderField = (label, value) => (
@@ -108,7 +109,7 @@ const OrderCard = ({ open, onClose, order }) => {
       {renderField('Валюта расчетов', order.payment_currency)}
       {renderField('Срок оплаты счетов', order.payment_term)}
       {renderField('Сумма за простой транспорта', formatMoney(order.demurrage_amount))}
-      {renderField('Цена в долларах', formatMoney(order.price_usd, '$'))}
+      {renderField('Цена в долларах', formatMoney(order.price_usd, 'USD'))}
       {renderField('Общая стоимость услуг', formatMoney(order.total_service_cost))}
       {renderField('Стоимость услуг без НДС', formatMoney(order.cost_without_vat))}
       {renderField('Ставка НДС', `${order.vat_rate}%`)}

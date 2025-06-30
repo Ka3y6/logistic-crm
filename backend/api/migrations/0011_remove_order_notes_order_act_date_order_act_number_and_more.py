@@ -5,139 +5,160 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0010_carrier_created_by_client_created_by_and_more'),
+        ("api", "0010_carrier_created_by_client_created_by_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='order',
-            name='notes',
+            model_name="order",
+            name="notes",
         ),
         migrations.AddField(
-            model_name='order',
-            name='act_date',
-            field=models.DateField(blank=True, null=True, verbose_name='Дата составления акта'),
+            model_name="order",
+            name="act_date",
+            field=models.DateField(blank=True, null=True, verbose_name="Дата составления акта"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='act_number',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Номер акта выполненных работ'),
+            model_name="order",
+            name="act_number",
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="Номер акта выполненных работ"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='cargo_quantity',
-            field=models.PositiveIntegerField(blank=True, null=True, verbose_name='Количество единиц груза'),
+            model_name="order",
+            name="cargo_quantity",
+            field=models.PositiveIntegerField(blank=True, null=True, verbose_name="Количество единиц груза"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='carrier_contract_number',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Номер контракта с перевозчиком'),
+            model_name="order",
+            name="carrier_contract_number",
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="Номер контракта с перевозчиком"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='carrier_currency',
-            field=models.CharField(blank=True, max_length=10, null=True, verbose_name='Валюта расчетов с перевозчиком'),
+            model_name="order",
+            name="carrier_currency",
+            field=models.CharField(blank=True, max_length=10, null=True, verbose_name="Валюта расчетов с перевозчиком"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='carrier_rate',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Стоимость услуг перевозчика'),
+            model_name="order",
+            name="carrier_rate",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Стоимость услуг перевозчика"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='client_rate',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Стоимость услуг для клиента'),
+            model_name="order",
+            name="client_rate",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Стоимость услуг для клиента"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='cmr_number',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Номер CMR в отчете'),
+            model_name="order",
+            name="cmr_number",
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="Номер CMR в отчете"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='consignee_okpo',
-            field=models.CharField(blank=True, max_length=10, null=True, verbose_name='ОКПО грузополучателя'),
+            model_name="order",
+            name="consignee_okpo",
+            field=models.CharField(blank=True, max_length=10, null=True, verbose_name="ОКПО грузополучателя"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='cost_with_vat',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Итоговая стоимость с НДС'),
+            model_name="order",
+            name="cost_with_vat",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Итоговая стоимость с НДС"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='cost_without_vat',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Стоимость услуг без НДС'),
+            model_name="order",
+            name="cost_without_vat",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Стоимость услуг без НДС"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='delivery_deadline',
-            field=models.DateField(blank=True, null=True, verbose_name='Приблизительный срок доставки'),
+            model_name="order",
+            name="delivery_deadline",
+            field=models.DateField(blank=True, null=True, verbose_name="Приблизительный срок доставки"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='demurrage_amount',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Сумма за простой транспорта'),
+            model_name="order",
+            name="demurrage_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Сумма за простой транспорта"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='invoice_date',
-            field=models.DateField(blank=True, null=True, verbose_name='Дата составления счета'),
+            model_name="order",
+            name="invoice_date",
+            field=models.DateField(blank=True, null=True, verbose_name="Дата составления счета"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='invoice_number',
-            field=models.CharField(blank=True, max_length=50, null=True, verbose_name='Номер счета на оплату'),
+            model_name="order",
+            name="invoice_number",
+            field=models.CharField(blank=True, max_length=50, null=True, verbose_name="Номер счета на оплату"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='margin_income',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Маржинальный доход'),
+            model_name="order",
+            name="margin_income",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Маржинальный доход"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='payment_currency',
-            field=models.CharField(blank=True, max_length=10, null=True, verbose_name='Валюта расчетов'),
+            model_name="order",
+            name="payment_currency",
+            field=models.CharField(blank=True, max_length=10, null=True, verbose_name="Валюта расчетов"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='payment_due_date',
-            field=models.DateField(blank=True, null=True, verbose_name='Срок оплаты счетов'),
+            model_name="order",
+            name="payment_due_date",
+            field=models.DateField(blank=True, null=True, verbose_name="Срок оплаты счетов"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='price_usd',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Цена в долларах'),
+            model_name="order",
+            name="price_usd",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Цена в долларах"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='service_cost',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True, verbose_name='Общая стоимость услуг'),
+            model_name="order",
+            name="service_cost",
+            field=models.DecimalField(
+                blank=True, decimal_places=2, max_digits=10, null=True, verbose_name="Общая стоимость услуг"
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='shipper_address',
-            field=models.TextField(blank=True, null=True, verbose_name='Адрес грузоотправителя'),
+            model_name="order",
+            name="shipper_address",
+            field=models.TextField(blank=True, null=True, verbose_name="Адрес грузоотправителя"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='shipper_contacts',
-            field=models.TextField(blank=True, null=True, verbose_name='Контактные данные грузоотправителя'),
+            model_name="order",
+            name="shipper_contacts",
+            field=models.TextField(blank=True, null=True, verbose_name="Контактные данные грузоотправителя"),
         ),
         migrations.AddField(
-            model_name='order',
-            name='vat_rate',
-            field=models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True, verbose_name='Ставка НДС'),
+            model_name="order",
+            name="vat_rate",
+            field=models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True, verbose_name="Ставка НДС"),
         ),
         migrations.AlterField(
-            model_name='order',
-            name='carrier',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='api.carrier', verbose_name='Перевозчик'),
+            model_name="order",
+            name="carrier",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="api.carrier",
+                verbose_name="Перевозчик",
+            ),
         ),
         migrations.AlterField(
-            model_name='order',
-            name='delivery_terms',
-            field=models.TextField(blank=True, null=True, verbose_name='Условия поставки по INCOTERMS'),
+            model_name="order",
+            name="delivery_terms",
+            field=models.TextField(blank=True, null=True, verbose_name="Условия поставки по INCOTERMS"),
         ),
     ]

@@ -14,11 +14,7 @@ import PrivateRoute from './components/PrivateRoute';
 import PublicRoute from './components/PublicRoute';
 import ProfilePage from './pages/ProfilePage';
 import Unauthorized from './pages/Unauthorized';
-import AdminPanel from './pages/Dashboard/AdminPanel';
-import ManagerPanel from './pages/Dashboard/ManagerPanel';
-import ClientPanel from './pages/Dashboard/ClientPanel';
 import Calendar from './components/apps/calendar/Calendar';
-import Chat from './components/apps/chat/Chat';
 import Email from './components/apps/email/Email';
 import ClientForm from './components/clients/ClientForm';
 import OrderForm from './components/orders/OrderForm';
@@ -26,36 +22,11 @@ import { CustomThemeProvider } from './contexts/ThemeContext';
 import SettingsPage from './pages/SettingsPage';
 import AIAssistantChat from './components/AIAssistantChat';
 import SiteRequestsPage from './pages/SiteRequestsPage';
+import FinancialReport from './components/finance/FinancialReport';
 import './App.css';
 
 // Выводим информацию о компоненте PrivateRoute для отладки
 console.log('App - PrivateRoute component:', PrivateRoute);
-
-const DashboardRoute = () => {
-  const { user } = useAuth();
-
-  console.log('DashboardRoute - Current user:', user);
-  console.log('DashboardRoute - User role:', user?.role);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  switch (user.role?.toLowerCase()) {
-    case 'admin':
-      console.log('DashboardRoute - Navigating to AdminPanel');
-      return <Layout><AdminPanel /></Layout>;
-    case 'manager':
-      console.log('DashboardRoute - Navigating to ManagerPanel');
-      return <Layout><ManagerPanel /></Layout>;
-    case 'client':
-      console.log('DashboardRoute - Navigating to ClientPanel');
-      return <Layout><ClientPanel /></Layout>;
-    default:
-      console.log('DashboardRoute - No matching role:', user.role);
-      return <Navigate to="/unauthorized" replace />;
-  }
-};
 
 function App() {
     return (
@@ -91,34 +62,6 @@ function App() {
                             <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
                             <Route path="/unauthorized" element={<Unauthorized />} />
                             <Route
-                                path="/dashboard"
-                                element={
-                                    <PrivateRoute allowedRoles={['admin', 'manager', 'client']}>
-                                        <DashboardRoute />
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/dashboard/manager"
-                                element={
-                                    <PrivateRoute allowedRoles={['manager']}>
-                                        <Layout>
-                                            <ManagerPanel />
-                                        </Layout>
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
-                                path="/dashboard/client"
-                                element={
-                                    <PrivateRoute allowedRoles={['client']}>
-                                        <Layout>
-                                            <ClientPanel />
-                                        </Layout>
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
                                 path="/profile"
                                 element={
                                     <PrivateRoute allowedRoles={['admin', 'manager', 'client']}>
@@ -131,7 +74,7 @@ function App() {
                             <Route
                                 path="/orders"
                                 element={
-                                    <PrivateRoute allowedRoles={['admin', 'manager']}>
+                                    <PrivateRoute allowedRoles={['admin', 'manager', 'client']}>
                                         <Layout>
                                             <OrdersPage />
                                         </Layout>
@@ -209,21 +152,21 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/chat"
-                                element={
-                                    <PrivateRoute allowedRoles={['admin', 'manager', 'client']}>
-                                        <Layout>
-                                            <Chat />
-                                        </Layout>
-                                    </PrivateRoute>
-                                }
-                            />
-                            <Route
                                 path="/email"
                                 element={
                                     <PrivateRoute allowedRoles={['admin', 'manager']}>
                                         <Layout>
                                             <Email />
+                                        </Layout>
+                                    </PrivateRoute>
+                                }
+                            />
+                            <Route
+                                path="/finance"
+                                element={
+                                    <PrivateRoute allowedRoles={['admin', 'manager', 'client']}>
+                                        <Layout>
+                                            <FinancialReport />
                                         </Layout>
                                     </PrivateRoute>
                                 }

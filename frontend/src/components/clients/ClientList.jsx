@@ -7,7 +7,13 @@ import {
   IconButton,
   Popover,
   Stack,
-  TablePagination
+  TablePagination,
+  Menu,
+  MenuItem,
+  Checkbox,
+  Link,
+  Select,
+  FormControl
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -16,7 +22,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   ColorLens as ColorLensIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import ClientCard from './ClientCard';
 import ClientForm from './ClientForm';
@@ -24,8 +31,13 @@ import DataTable from '../common/DataTable';
 import TableFilters from '../common/TableFilters';
 import { clientsApi } from '../../api/api';
 import { predefinedColors } from '../../constants/colors';
+import { useAuth } from '../../contexts/AuthContext';
+import { useEmail } from '../../contexts/EmailContext';
+import api from '../../api/api';
 
 const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loading, error, onBulkDelete }) => {
+  const { user } = useAuth();
+  const { openComposeModal } = useEmail();
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [isCardOpen, setIsCardOpen] = useState(false);
@@ -83,6 +95,41 @@ const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loadi
     handleColorMenuClose();
   };
    // --- Конец обработчиков кнопок ---
+
+  const [columnsAnchorEl, setColumnsAnchorEl] = useState(null);
+  const defaultVisibility = {
+    company_name: true,
+    business_scope: true,
+    address: true,
+    unp: true,
+    bank_details: false,
+    unn: false,
+    okpo: false,
+    comments: false,
+    contacts: true,
+    has_active_order: true,
+    created_at: false,
+    updated_at: false,
+    created_by: true,
+  };
+  const [columnVisibility, setColumnVisibility] = useState(() => {
+    const saved = localStorage.getItem('client_columns_visibility');
+    return saved ? JSON.parse(saved) : defaultVisibility;
+  });
+
+  const handleOpenColumnsMenu = (e) => setColumnsAnchorEl(e.currentTarget);
+  const handleCloseColumnsMenu = () => setColumnsAnchorEl(null);
+  const handleToggleColumn = (field) => {
+    setColumnVisibility((prev) => {
+      const updated = { ...prev, [field]: !prev[field] };
+      localStorage.setItem('client_columns_visibility', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const [usersList, setUsersList] = useState([]);
+  useEffect(()=>{ if(user?.role==='admin'){ api.get('/users/').then(r=>{ const arr=Array.isArray(r.data)?r.data:r.data.results||[]; setUsersList(arr);});}},[user]);
+  const handleReassign = async (rowId,newUserId)=>{ try{ await api.patch(`/clients/${rowId}/`,{created_by_id:newUserId}); fetchClients();}catch(e){console.error('Reassign error',e);} };
 
   useEffect(() => {
     fetchClients();
@@ -202,6 +249,44 @@ const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loadi
             <ExportIcon />
           </IconButton>
           <IconButton
+            onClick={handleOpenColumnsMenu}
+            color="primary"
+            title="Настроить колонки"
+            size="small"
+          >
+            <SettingsIcon />
+          </IconButton>
+          <Menu
+            anchorEl={columnsAnchorEl}
+            open={Boolean(columnsAnchorEl)}
+            onClose={handleCloseColumnsMenu}
+          >
+            {Object.keys(defaultVisibility).map((field) => {
+              if (field === 'created_by' && user?.role !== 'admin') return null;
+              const labels = {
+                company_name: 'Наименование компании',
+                business_scope: 'Сфера деятельности',
+                address: 'Адрес',
+                unp: 'УНП',
+                bank_details: 'Банковские реквизиты',
+                unn: 'УНН',
+                okpo: 'ОКПО',
+                comments: 'Комментарии',
+                contacts: 'Контакты',
+                has_active_order: 'Есть активные заказы',
+                created_at: 'Создан',
+                updated_at: 'Обновлён',
+                created_by: 'Создатель',
+              };
+              return (
+                <MenuItem key={field} onClick={() => handleToggleColumn(field)}>
+                  <Checkbox checked={columnVisibility[field]} size="small" />
+                  {labels[field] || field}
+                </MenuItem>
+              );
+            })}
+          </Menu>
+          <IconButton
             onClick={handleColorMenuOpen}
             color="primary"
             title="Раскрасить ячейки"
@@ -289,10 +374,59 @@ const ClientList = ({ onDelete, onAdd, onExport, onImport, onApplyFilters, loadi
         ref={dataTableRef}
         data={clients.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)}
         columns={[
-          { field: 'company_name', headerName: 'Наименование компании', minWidth: 200 },
-          { field: 'business_scope', headerName: 'Сфера деятельности', minWidth: 200 },
-          { field: 'address', headerName: 'Адрес', minWidth: 200 },
-          { field: 'unp', headerName: 'УНП', minWidth: 120 },
+          ...(columnVisibility.company_name ? [{ field: 'company_name', headerName: 'Наименование компании', minWidth: 200 }] : []),
+          ...(columnVisibility.business_scope ? [{ field: 'business_scope', headerName: 'Сфера деятельности', minWidth: 200 }] : []),
+          ...(columnVisibility.address ? [{ field: 'address', headerName: 'Адрес', minWidth: 200 }] : []),
+          ...(columnVisibility.unp ? [{ field: 'unp', headerName: 'УНП', minWidth: 120 }] : []),
+          ...(columnVisibility.bank_details ? [{ field: 'bank_details', headerName: 'Банковские реквизиты', minWidth: 200 }] : []),
+          ...(columnVisibility.unn ? [{ field: 'unn', headerName: 'УНН', minWidth: 140 }] : []),
+          ...(columnVisibility.okpo ? [{ field: 'okpo', headerName: 'ОКПО', minWidth: 140 }] : []),
+          ...(columnVisibility.comments ? [{ field: 'comments', headerName: 'Комментарии', minWidth: 200 }] : []),
+          ...(columnVisibility.contacts ? [{
+            field: 'contacts',
+            headerName: 'Контакты',
+            minWidth: 200,
+            renderCell: ({ row }) => {
+              const contact = row.contacts?.manager?.[0] || row.contacts?.director?.[0];
+              if (!contact) return '-';
+              return (
+                <Box sx={{ display:'flex', flexDirection:'column' }}>
+                  {contact.name && <span>{contact.name}</span>}
+                  {contact.phone && <span>{contact.phone}</span>}
+                  {contact.email && (
+                    <Link component="button" onClick={(e)=>{e.stopPropagation();openComposeModal({to: contact.email});}} underline="hover">
+                      {contact.email}
+                    </Link>
+                  )}
+                </Box>
+              );
+            }
+          }] : []),
+          ...(columnVisibility.has_active_order ? [{ field: 'has_active_order', headerName: 'Активные заказы', minWidth: 160, renderCell: ({ row }) => row.has_active_order ? 'Да' : 'Нет' }] : []),
+          ...(columnVisibility.created_at ? [{ field: 'created_at', headerName: 'Создан', minWidth: 160 }] : []),
+          ...(columnVisibility.updated_at ? [{ field: 'updated_at', headerName: 'Обновлён', minWidth: 160 }] : []),
+          ...(user?.role === 'admin' && columnVisibility.created_by ? [{
+            field: 'created_by',
+            headerName: 'Назначено',
+            minWidth: 170,
+            renderCell: ({ row }) => (
+              <FormControl size="small" fullWidth>
+                <Select
+                  value={row.created_by?.id || ''}
+                  renderValue={(selected)=>{
+                    const u=usersList.find(x=>x.id===selected);
+                    return u?`${u.first_name || ''} ${u.last_name || ''}`.trim()||u.email:'-';
+                  }}
+                  onClick={(e)=>e.stopPropagation()}
+                  onChange={(e)=>handleReassign(row.id,e.target.value)}
+                >
+                  {usersList.map(u=><MenuItem key={u.id} value={u.id}>{`${u.first_name || ''} ${u.last_name || ''}`.trim()||u.email}</MenuItem>)}
+                </Select>
+              </FormControl>
+            ),
+          }] : user?.role!=='admin' && columnVisibility.created_by ? [{
+            field:'created_by',headerName:'Назначено',minWidth:170,renderCell:({row})=>row.created_by?(`${row.created_by.first_name||''} ${row.created_by.last_name||''}`.trim()||row.created_by.email):'-'
+          }]: []),
           {
             field: 'actions',
             headerName: 'Действия',

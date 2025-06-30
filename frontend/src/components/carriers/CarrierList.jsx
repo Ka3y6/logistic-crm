@@ -20,15 +20,27 @@ import {
   Visibility as VisibilityIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import CarrierCard from './CarrierCard';
 import CarrierForm from './CarrierForm';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import Select from '@mui/material/Select';
+import FormControl from '@mui/material/FormControl';
 import DataTable from '../common/DataTable';
 import TableFilters from '../common/TableFilters';
 import { carriersApi } from '../../api/api';
 import { predefinedColors } from '../../constants/colors';
+import { useAuth } from '../../contexts/AuthContext';
+import { useEmail } from '../../contexts/EmailContext';
+import Link from '@mui/material/Link';
+import api from '../../api/api';
 
 const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFilters, loading, error, fetchCarriers, onBulkDelete }) => {
+  const { user } = useAuth();
+  const { openComposeModal } = useEmail();
   const [selectedCarrier, setSelectedCarrier] = useState(null);
   const [isCardOpen, setIsCardOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -36,6 +48,7 @@ const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFil
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const fileInputRef = React.useRef(null);
+  const [usersList, setUsersList] = useState([]);
 
   // --- Состояние для Popover выбора цвета ---
   const [colorAnchorEl, setColorAnchorEl] = useState(null);
@@ -157,52 +170,100 @@ const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFil
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-  
+
+  const [columnsAnchorEl, setColumnsAnchorEl] = useState(null);
+
+  const defaultVisibility = {
+    company_name: true,
+    working_directions: true,
+    location: true,
+    fleet: true,
+    vehicle_number: true,
+    contacts: true,
+    comments: false,
+    known_rates: false,
+    created_by: true,
+  };
+
+  const [columnVisibility, setColumnVisibility] = useState(() => {
+    const saved = localStorage.getItem('carrier_columns_visibility');
+    const parsed = saved ? JSON.parse(saved) : {};
+    return { ...defaultVisibility, ...parsed };
+  });
+
+  const handleOpenColumnsMenu = (e) => setColumnsAnchorEl(e.currentTarget);
+  const handleCloseColumnsMenu = () => setColumnsAnchorEl(null);
+  const handleToggleColumn = (field) => {
+    setColumnVisibility((prev) => {
+      const updated = { ...prev, [field]: !prev[field] };
+      localStorage.setItem('carrier_columns_visibility', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      api.get('/users/').then(res => {
+        const arr = Array.isArray(res.data) ? res.data : res.data.results || [];
+        setUsersList(arr);
+      }).catch(() => {});
+    }
+  }, [user]);
+
+  const handleReassign = async (carrierId, newUserId) => {
+    try {
+      await api.patch(`/carriers/${carrierId}/`, { created_by_id: newUserId });
+      if (fetchCarriers) fetchCarriers();
+    } catch (e) {
+      console.error('Ошибка переназначения', e);
+    }
+  };
+
   const columns = [
-    { field: 'company_name', headerName: 'Наименование компании', minWidth: 200 },
-    { field: 'working_directions', headerName: 'Направления', minWidth: 200 },
-    { field: 'location', headerName: 'Местоположение', minWidth: 150 },
-    { field: 'fleet', headerName: 'Автопарк', minWidth: 150 },
-    { 
-      field: 'contacts', 
-      headerName: 'Контакты', 
+    ...(columnVisibility.company_name ? [{ field: 'company_name', headerName: 'Наименование', minWidth: 200 }] : []),
+    ...(columnVisibility.working_directions ? [{ field: 'working_directions', headerName: 'Направления', minWidth: 200 }] : []),
+    ...(columnVisibility.location ? [{ field: 'location', headerName: 'Местоположение', minWidth: 150 }] : []),
+    ...(columnVisibility.fleet ? [{ field: 'fleet', headerName: 'Автопарк', minWidth: 150 }] : []),
+    ...(columnVisibility.contacts ? [{
+      field: 'contacts',
+      headerName: 'Контакты',
       minWidth: 200,
       renderCell: ({ row }) => {
-        const contact = row.contacts || {};
+        const contact = row.contacts?.manager?.[0] || row.contacts?.director?.[0];
+        if (!contact) return '-';
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-            {contact.name && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <strong>Имя:</strong> {contact.name}
-              </Box>
-            )}
-            {contact.phone && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <strong>Тел:</strong> {contact.phone}
-              </Box>
-            )}
+          <Box sx={{ display:'flex', flexDirection:'column' }}>
+            {contact.name && <span>{contact.name}</span>}
+            {contact.phone && <span>{contact.phone}</span>}
             {contact.email && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <strong>Email:</strong> {contact.email}
-              </Box>
-            )}
-            {contact.skype && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <strong>Skype:</strong> {contact.skype}
-              </Box>
-            )}
-            {contact.telegram && (
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <strong>Telegram:</strong> {contact.telegram}
-              </Box>
+              <Link component="button" onClick={(e)=>{e.stopPropagation();openComposeModal({to: contact.email});}} underline="hover">
+                {contact.email}
+              </Link>
             )}
           </Box>
         );
       }
-    },
-    { field: 'comments', headerName: 'Комментарии', minWidth: 200 },
-    { field: 'known_rates', headerName: 'Известные тарифы', minWidth: 200 },
-    { field: 'vehicle_number', headerName: 'Номер ТС', minWidth: 120 },
+    }] : []),
+    ...(columnVisibility.comments ? [{ field: 'comments', headerName: 'Комментарии', minWidth: 200 }] : []),
+    ...(columnVisibility.known_rates ? [{ field: 'known_rates', headerName: 'Известные тарифы', minWidth: 200 }] : []),
+    ...(columnVisibility.vehicle_number ? [{ field: 'vehicle_number', headerName: 'Номер ТС', minWidth: 120 }] : []),
+    ...(user?.role === 'admin' && columnVisibility.created_by ? [{
+      field: 'created_by',
+      headerName: 'Назначено',
+      minWidth: 170,
+      renderCell: ({ row }) => (
+        <FormControl size="small" fullWidth onClick={(e)=>e.stopPropagation()}>
+          <Select
+            value={row.created_by?.id || ''}
+            onChange={(e)=>handleReassign(row.id, e.target.value)}
+          >
+            {usersList.map(u => <MenuItem key={u.id} value={u.id}>{u.email}</MenuItem>)}
+          </Select>
+        </FormControl>
+      ),
+    }] : user?.role!=='admin' && columnVisibility.created_by ? [{
+      field:'created_by', headerName:'Назначено', minWidth:170, renderCell:({row})=>row.created_by?row.created_by.email:'-'
+    }]: []),
     {
       field: 'actions',
       headerName: 'Действия',
@@ -290,6 +351,14 @@ const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFil
             title="Добавить перевозчика"
           >
             <AddIcon />
+          </IconButton>
+          <IconButton
+            onClick={handleOpenColumnsMenu}
+            color="primary"
+            title="Настройки столбцов"
+            size="small"
+          >
+            <SettingsIcon />
           </IconButton>
         </Box>
       </Box>
@@ -400,6 +469,34 @@ const CarrierList = ({ carriers, onDelete, onAdd, onExport, onImport, onApplyFil
       />
           </DialogContent>
       </Dialog>
+
+      <Menu
+        anchorEl={columnsAnchorEl}
+        open={Boolean(columnsAnchorEl)}
+        onClose={handleCloseColumnsMenu}
+      >
+        {Object.keys(defaultVisibility).map((field) => {
+          const visible = columnVisibility[field];
+          if (field === 'created_by' && user?.role !== 'admin') return null;
+          const labels = {
+            company_name: 'Наименование',
+            working_directions: 'Направления',
+            location: 'Местоположение',
+            fleet: 'Автопарк',
+            vehicle_number: 'Номер ТС',
+            contacts: 'Контакты',
+            comments: 'Комментарии',
+            known_rates: 'Известные тарифы',
+            created_by: 'Создатель',
+          };
+          return (
+            <MenuItem key={field} onClick={() => handleToggleColumn(field)}>
+              <Checkbox checked={visible} size="small" />
+              {labels[field] || field}
+            </MenuItem>
+          );
+        })}
+      </Menu>
     </Box>
   );
 };

@@ -25,9 +25,3 @@ class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
         # Проверяем, что пользователь аутентифицирован и имеет роль admin
         return bool(request.user and request.user.is_authenticated and getattr(request.user, "role", None) == "admin")
-
-
-class IsAdminUser(permissions.BasePermission):
-    def has_permission(self, request, view):
-        # Проверяем, что пользователь аутентифицирован и имеет роль admin
-        return bool(request.user and request.user.is_authenticated and getattr(request.user, "role", None) == "admin")

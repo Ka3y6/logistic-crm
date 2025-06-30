@@ -16,6 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import include, path
 from django.views.generic.base import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -27,6 +28,10 @@ urlpatterns = [
     path("api/site-requests/", include("site_requests.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path(
+        "ws",
+        lambda request: HttpResponse("", status=204, headers={"Cache-Control": "no-store"}),
+    ),
     path("", RedirectView.as_view(url="/admin/")),
 ]
 

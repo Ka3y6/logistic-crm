@@ -7,7 +7,7 @@
   border: none;
   font-family: 'Tenor Sans', sans-serif !important; /* Применен шрифт Tenor Sans с !important */
   /* Увеличиваем высоту для лучшего вида */
-  height: calc(100vh - 100px) !important; /* Вы можете настроить высоту */
+  max-height: 100%; /* Позволяет календарю занимать всю высоту родителя */
 }
 
 /* Заголовок (Месяц/Год и кнопки навигации) */
@@ -92,7 +92,7 @@
 }
 .rbc-month-row {
     border-bottom: 1px solid #eee;
-    min-height: 100px; /* Уменьшаем высоту строки */
+    min-height: 80px; /* Ещё уменьшаем высоту строки, чтобы календарь не выходил за экран */
 }
 .rbc-month-row:last-child {
     border-bottom: none !important; /* Убираем границу у последней строки */

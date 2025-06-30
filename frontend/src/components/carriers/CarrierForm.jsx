@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../api/api';
 import {
   Box,
   TextField,
@@ -14,6 +16,7 @@ import {
 } from '@mui/material';
 
 const CarrierForm = ({ onSubmit, carrier, onClose }) => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [contactType, setContactType] = useState('manager');
   const [error, setError] = useState('');
@@ -28,6 +31,7 @@ const CarrierForm = ({ onSubmit, carrier, onClose }) => {
     comments: '',
     contacts: []
   });
+  const [usersList, setUsersList] = useState([]);
 
   const validateUnp = (unp) => {
     if (!unp) return '';
@@ -50,6 +54,7 @@ const CarrierForm = ({ onSubmit, carrier, onClose }) => {
       console.log('[CarrierForm] Setting form data from carrier:', carrier);
       setFormData({
         ...carrier,
+        created_by_id: carrier.created_by?.id || '',
         contacts: Array.isArray(carrier.contacts) ? carrier.contacts : []
       });
     } else {
@@ -66,7 +71,12 @@ const CarrierForm = ({ onSubmit, carrier, onClose }) => {
         contacts: []
       });
     }
-  }, [carrier]);
+    if (user?.role === 'admin') {
+      api.get('/users/').then(res => {
+        setUsersList(Array.isArray(res.data) ? res.data : res.data.results || []);
+      }).catch(() => {});
+    }
+  }, [carrier, user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -111,7 +121,11 @@ const CarrierForm = ({ onSubmit, carrier, onClose }) => {
     }
 
     try {
-      await onSubmit(formData);
+      const payload = { ...formData };
+      if (user?.role === 'admin' && formData.created_by_id) {
+        payload.created_by_id = formData.created_by_id;
+      }
+      await onSubmit(payload);
       onClose();
     } catch (err) {
       setError(err.message || 'Произошла ошибка при сохранении');
@@ -164,6 +178,23 @@ const CarrierForm = ({ onSubmit, carrier, onClose }) => {
             rows={3}
           />
         </Grid>
+        {user?.role === 'admin' && (
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel>Создатель</InputLabel>
+              <Select
+                label="Создатель"
+                name="created_by_id"
+                value={formData.created_by_id || ''}
+                onChange={handleChange}
+              >
+                {usersList.map(u => (
+                  <MenuItem key={u.id} value={u.id}>{u.email}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

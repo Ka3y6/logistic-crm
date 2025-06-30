@@ -6,29 +6,36 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0005_userprofile'),
+        ("api", "0005_userprofile"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TableHighlight',
+            name="TableHighlight",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('table_name', models.CharField(max_length=100, verbose_name='Имя таблицы')),
-                ('row_id', models.IntegerField(verbose_name='ID строки')),
-                ('column_id', models.CharField(max_length=100, verbose_name='ID колонки')),
-                ('color', models.CharField(blank=True, max_length=20, null=True, verbose_name='Цвет')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='table_highlights', to=settings.AUTH_USER_MODEL, verbose_name='Пользователь')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("table_name", models.CharField(max_length=100, verbose_name="Имя таблицы")),
+                ("row_id", models.IntegerField(verbose_name="ID строки")),
+                ("column_id", models.CharField(max_length=100, verbose_name="ID колонки")),
+                ("color", models.CharField(blank=True, max_length=20, null=True, verbose_name="Цвет")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="table_highlights",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Пользователь",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Выделение ячейки таблицы',
-                'verbose_name_plural': 'Выделения ячеек таблиц',
-                'ordering': ['-updated_at'],
-                'unique_together': {('user', 'table_name', 'row_id', 'column_id')},
+                "verbose_name": "Выделение ячейки таблицы",
+                "verbose_name_plural": "Выделения ячеек таблиц",
+                "ordering": ["-updated_at"],
+                "unique_together": {("user", "table_name", "row_id", "column_id")},
             },
         ),
     ]

@@ -2,12 +2,10 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import requests
 from django.apps import apps
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +18,9 @@ ANALYZE_EXCEL_TOOL_SCHEMA = {
     },
     "required": ["data", "model_name"],
 }
+
+# HTTP status codes
+HTTP_STATUS_OK = 200  # 200 OK
 
 
 def analyze_data_with_ai(data, model_name):
@@ -44,22 +45,22 @@ def analyze_data_with_ai(data, model_name):
         # Формируем промпт для ИИ
         prompt = f"""
         Проанализируй структуру данных и определи соответствие колонок полям модели {model_name}.
-        
+
         Поля модели:
         {[f.name for f in model._meta.fields]}
-        
+
         Информация о колонках:
         {json.dumps(columns_info, indent=2)}
-        
+
         Пример данных:
         {json.dumps(sample_data, indent=2)}
-        
+
         Определи:
         1. Какие колонки соответствуют каким полям модели
         2. Какие колонки содержат контактную информацию
         3. Какие колонки можно игнорировать
         4. Какие поля модели остались неиспользованными
-        
+
         Верни результат в формате JSON:
         {{
             "mappings": {{"column_name": "field_name"}},
@@ -83,7 +84,7 @@ def analyze_data_with_ai(data, model_name):
             json={"model": "anthropic/claude-3-opus", "messages": [{"role": "user", "content": prompt}]},
         )
 
-        if response.status_code != 200:
+        if response.status_code != HTTP_STATUS_OK:
             raise Exception(f"Ошибка API OpenRouter: {response.text}")
 
         # Парсим ответ
@@ -112,8 +113,8 @@ def parse_contacts(cell_value):
 
     # Разбиваем по переводам строк, точкам с запятой, табуляции, нескольким пробелам
     parts = re.split(r"[\n;\t]| {2,}", cell_value)
-    for part in parts:
-        part = part.strip()
+    for raw_part in parts:
+        part = raw_part.strip()
         if not part:
             continue
         # Поиск email

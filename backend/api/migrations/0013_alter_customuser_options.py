@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0012_alter_order_carrier_alter_order_cmr_number'),
+        ("api", "0012_alter_order_carrier_alter_order_cmr_number"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='customuser',
-            options={'ordering': ['-date_joined'], 'verbose_name': 'user', 'verbose_name_plural': 'users'},
+            name="customuser",
+            options={"ordering": ["-date_joined"], "verbose_name": "user", "verbose_name_plural": "users"},
         ),
     ]

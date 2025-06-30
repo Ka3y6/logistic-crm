@@ -6,15 +6,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('api', '0013_alter_customuser_options'),
+        ("api", "0013_alter_customuser_options"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='calendartask',
-            name='assignee',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='assigned_tasks', to=settings.AUTH_USER_MODEL, verbose_name='Исполнитель'),
+            model_name="calendartask",
+            name="assignee",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="assigned_tasks",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="Исполнитель",
+            ),
         ),
     ]

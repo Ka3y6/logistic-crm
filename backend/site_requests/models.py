@@ -1,6 +1,5 @@
 from api.models import CustomUser as User
 from django.db import models
-from django.utils import timezone
 
 
 class Request(models.Model):

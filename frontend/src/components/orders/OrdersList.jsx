@@ -42,7 +42,7 @@ const OrdersList = () => {
         client_name: order.client?.company_name || 'Не указан',
         status: order.status || 'Новый',
         loading_date: order.loading_date ? new Date(order.loading_date).toLocaleDateString('ru-RU') : '-',
-        total_price: order.total_price ? `${order.total_price} ₽` : '-',
+        total_price: order.total_price ? `${order.total_price} ${order.payment_currency || 'RUB'}` : '-',
         id: order.id
       })) : [];
       

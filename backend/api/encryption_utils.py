@@ -4,7 +4,6 @@ import os
 from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 

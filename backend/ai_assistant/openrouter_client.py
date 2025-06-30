@@ -4,13 +4,14 @@ import os
 from typing import Any, Dict, List, Optional
 
 import aiohttp
-import httpx
 from asgiref.sync import sync_to_async
 
 from .models import AISettings
-from .tools import AVAILABLE_TOOLS
 
 logger = logging.getLogger(__name__)
+
+# Статусы HTTP
+HTTP_STATUS_OK = 200
 
 SYSTEM_PROMPT = """Ты - AI ассистент для CRM системы логистической компании. Твоя задача - помогать пользователям с их запросами, связанными с управлением заказами, клиентами, перевозчиками и другими аспектами логистического бизнеса.
 
@@ -110,7 +111,7 @@ class OpenRouterClient:
 
             try:
                 async with session.post(f"{self.base_url}/chat/completions", headers=headers, json=data) as response:
-                    if response.status == 200:
+                    if response.status == HTTP_STATUS_OK:
                         result = await response.json()
                         content = result["choices"][0]["message"]["content"]
 

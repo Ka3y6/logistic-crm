@@ -1,15 +1,15 @@
 import json  # Для парсинга аргументов инструментов
 import logging
-import os
 
-from api.permissions import IsAdminUser  # Добавляем импорт
-from asgiref.sync import async_to_sync, sync_to_async  # Добавлен async_to_sync
+from asgiref.sync import async_to_sync
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import permissions, viewsets
-from rest_framework.authentication import TokenAuthentication  # Добавлен TokenAuthentication
-from rest_framework.authentication import SessionAuthentication
+from rest_framework import status, viewsets
+from rest_framework.authentication import (
+    SessionAuthentication,
+    TokenAuthentication,  # Добавлен TokenAuthentication
+)
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -47,178 +47,107 @@ class AssistantQueryView(APIView):
         return user_email, user_message, history
 
     async def _handle_ai_interaction_async(self, request):
-        client = None  # Объявляем client здесь, чтобы finally мог его использовать
-        response_data = None
-        status_code = 200
-
+        """Основной сценарий: получает сообщение пользователя, обращается к AI и формирует ответ."""
         try:
+            # 1. Разбираем входные данные
             user_email, user_message, history = await self._get_request_data_async(request)
-
             if not user_message:
                 return {"error": "Сообщение не предоставлено"}, 400
 
-            logger.info(f"Получено сообщение от пользователя {user_email}: {user_message}")
-            logger.info(f"История чата: {history}")
+            logger.info("Получено сообщение от пользователя %s: %s", user_email, user_message)
 
+            # 2. Запрашиваем первичный ответ AI
             client = OpenRouterClient(user=request.user)
-
             ai_response = await client.generate_response(prompt=user_message, history=history)
 
-            current_history_for_model = list(history)
-            current_history_for_model.append({"role": "user", "content": user_message})
+            # 3. Обрабатываем ответ AI
+            return await self._process_ai_response(client, ai_response, history, request)
 
-            if ai_response.get("type") == "tool_calls":
-                logger.info(f"AI запросил вызов инструментов: {ai_response['content']}")
+        except ValueError as ve:
+            logger.warning("_handle_ai_interaction_async ValueError: %s", ve)
+            return {"error": str(ve)}, 400
+        except Exception as exc:
+            logger.exception("Unhandled error in _handle_ai_interaction_async")
+            return {"error": f"An unexpected server error occurred: {exc}"}, 500
 
-                assistant_message_with_tool_calls = {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": ai_response["content"],
-                }
-                current_history_for_model.append(assistant_message_with_tool_calls)
+    # ----------------------- helpers ----------------------- #
 
-                tool_results_for_next_call = []
+    async def _process_ai_response(self, client, ai_response, history, request):
+        """Разбирает тип ответа AI и действует соответствующим образом."""
+        resp_type = ai_response.get("type")
 
-                for tool_call in ai_response["content"]:
-                    tool_name = tool_call.get("function", {}).get("name")
-                    tool_args_str = tool_call.get("function", {}).get("arguments")
-                    tool_call_id = tool_call.get("id")
+        if resp_type == "tool_calls":
+            return await self._process_tool_calls_and_finalize(client, ai_response["content"], history, request)
 
-                    if not tool_name or not tool_args_str or not tool_call_id:
-                        logger.error(f"Неполные данные для вызова инструмента: {tool_call}")
-                        tool_results_for_next_call.append(
-                            (
-                                tool_call_id,
-                                json.dumps({"status": "error", "message": "Incomplete tool call data from AI."}),
-                            )
-                        )
-                        continue
+        if resp_type == "text":
+            actual_message = ai_response["content"].split("\n")[0].strip()
+            return {"message": actual_message}, 200
 
-                    try:
-                        tool_args = json.loads(tool_args_str)
-                    except json.JSONDecodeError:
-                        logger.error(f"Ошибка парсинга аргументов инструмента {tool_name}: {tool_args_str}")
-                        tool_results_for_next_call.append(
-                            (tool_call_id, json.dumps({"status": "error", "message": "Invalid tool arguments format."}))
-                        )
-                        continue
+        if resp_type == "error":
+            logger.error("Ошибка от AI клиента: %s", ai_response.get("content"))
+            return {"error": ai_response.get("content", "Неизвестная ошибка AI")}, 500
 
-                    if tool_name in TOOL_FUNCTIONS:
-                        try:
-                            tool_result = await TOOL_FUNCTIONS[tool_name](request.user, **tool_args)
-                            tool_results_for_next_call.append(
-                                (tool_call_id, json.dumps({"status": "success", "result": tool_result}))
-                            )
-                        except Exception as e:
-                            logger.error(f"Ошибка выполнения инструмента {tool_name}: {e}")
-                            tool_results_for_next_call.append(
-                                (tool_call_id, json.dumps({"status": "error", "message": str(e)}))
-                            )
-                    else:
-                        logger.warning(f"Неизвестный инструмент: {tool_name}")
-                        tool_results_for_next_call.append(
-                            (tool_call_id, json.dumps({"status": "error", "message": f"Unknown tool: {tool_name}"}))
-                        )
+        logger.error("Неожиданный тип ответа от AI: %s", ai_response)
+        return {"error": "Неожиданный ответ от AI"}, 500
 
-                logger.info(f"Отправка результатов инструментов AI: {tool_results_for_next_call}")
-                ai_final_response = await client.generate_response(
-                    prompt=None, history=current_history_for_model, tool_results=tool_results_for_next_call
+    async def _process_tool_calls_and_finalize(self, client, tool_calls, history, request):
+        """Выполняет инструменты, затем делает финальный запрос к AI."""
+
+        tool_results_for_next_call = []
+
+        for call in tool_calls:
+            tool_name = call.get("function", {}).get("name")
+            tool_args_str = call.get("function", {}).get("arguments")
+            tool_call_id = call.get("id")
+
+            if not (tool_name and tool_args_str and tool_call_id):
+                logger.error("Неполные данные для вызова инструмента: %s", call)
+                tool_results_for_next_call.append((tool_call_id, json.dumps({"status": "error"})))
+                continue
+
+            try:
+                tool_args = json.loads(tool_args_str)
+            except json.JSONDecodeError:
+                logger.error("Ошибка парсинга аргументов инструмента %s: %s", tool_name, tool_args_str)
+                tool_results_for_next_call.append((tool_call_id, json.dumps({"status": "error"})))
+                continue
+
+            if tool_name not in TOOL_FUNCTIONS:
+                logger.warning("Неизвестный инструмент: %s", tool_name)
+                tool_results_for_next_call.append((tool_call_id, json.dumps({"status": "error"})))
+                continue
+
+            try:
+                tool_result = await TOOL_FUNCTIONS[tool_name](request.user, **tool_args)
+                tool_results_for_next_call.append(
+                    (tool_call_id, json.dumps({"status": "success", "result": tool_result}))
                 )
+            except Exception as e:
+                logger.error("Ошибка выполнения инструмента %s: %s", tool_name, e)
+                tool_results_for_next_call.append((tool_call_id, json.dumps({"status": "error", "message": str(e)})))
 
-                # Обработка ответа после вызова инструментов
-                if ai_final_response.get("type") == "text":
-                    actual_message = ai_final_response["content"].split("\n")[0].strip()
-                    response_data = {"message": actual_message}
-                elif ai_final_response.get("type") == "tool_calls":  # Если AI снова запросил инструменты
-                    logger.warning(
-                        f"AI попытался вызвать инструменты снова после получения результатов: {ai_final_response.get('content')}"
-                    )
-                    # Формируем ответ на основе результатов ПРЕДЫДУЩЕГО успешного вызова инструмента
-                    final_user_message = "Действие выполнено, но AI запросил дополнительный вызов инструмента."
-                    if (
-                        tool_results_for_next_call
-                        and isinstance(tool_results_for_next_call, list)
-                        and len(tool_results_for_next_call) > 0
-                    ):
-                        try:
-                            first_tool_result_str = tool_results_for_next_call[0][1]
-                            first_tool_result_json = json.loads(first_tool_result_str)
-                            if first_tool_result_json.get("status") == "success" and first_tool_result_json.get(
-                                "result"
-                            ):
-                                final_user_message = first_tool_result_json["result"]
-                        except Exception as e_parse_tool_result:
-                            logger.error(
-                                f"Ошибка при извлечении сообщения из результата предыдущего инструмента: {str(e_parse_tool_result)}"
-                            )
-                    response_data = {"message": final_user_message}
-                    # status_code остается 200
-                # Если тип ответа "error" или любой другой неожиданный тип, но инструмент УЖЕ был выполнен
-                elif tool_results_for_next_call:  # Проверяем, были ли результаты инструментов (значит, первый шаг был)
-                    logger.warning(
-                        f"Финальный ответ от AI не текст и не tool_calls, но инструменты были выполнены. Тип ответа: {ai_final_response.get('type')}, Контент: {ai_final_response.get('content')}"
-                    )
-                    final_user_message = "Задача успешно обработана, но AI не дал финального подтверждения."
-                    # Пытаемся извлечь сообщение из первого успешного результата инструмента
-                    try:
-                        first_tool_result_str = tool_results_for_next_call[0][1]
-                        first_tool_result_json = json.loads(first_tool_result_str)
-                        if first_tool_result_json.get("status") == "success" and first_tool_result_json.get("result"):
-                            final_user_message = first_tool_result_json["result"]
-                        elif first_tool_result_json.get("result"):
-                            final_user_message = first_tool_result_json["result"]
-                    except Exception as e_parse_tool_result_fallback:
-                        logger.error(
-                            f"Ошибка при извлечении сообщения из результата (fallback): {str(e_parse_tool_result_fallback)}"
-                        )
-                    response_data = {"message": final_user_message}
-                    status_code = 200  # Важно, так как основная операция (создание задачи) удалась
-                else:  # Если инструментов не было ИЛИ финальный ответ - ошибка без предыдущих инструментов
-                    error_content = ai_final_response.get(
-                        "content", "Неизвестная ошибка AI после вызова инструмента (или без него)"
-                    )
-                    response_data = {"error": error_content}
-                    logger.error(
-                        f"Финальный ответ от AI - ошибка: {error_content}. Тип: {ai_final_response.get('type')}"
-                    )
-                    status_code = 500
+        # Обновляем историю для финального запроса
+        history_with_user = list(history)
+        history_with_user.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
 
-            elif ai_response.get("type") == "text":
-                logger.info(f"Получен текстовый ответ от AI: {ai_response['content']}")
-                actual_message = ai_response["content"].split("\n")[0].strip()
-                response_data = {"message": actual_message}
+        ai_final = await client.generate_response(
+            prompt=None, history=history_with_user, tool_results=tool_results_for_next_call
+        )
 
-            elif ai_response.get("type") == "error":
-                logger.error(f"Ошибка от AI клиента: {ai_response.get('content')}")
-                response_data = {"error": ai_response.get("content", "Неизвестная ошибка AI")}
-                status_code = 500
+        if ai_final.get("type") == "text":
+            msg = ai_final["content"].split("\n")[0].strip()
+            return {"message": msg}, 200
 
-            else:
-                logger.error(f"Неожиданный тип ответа от AI: {ai_response}")
-                response_data = {"error": "Неожиданный ответ от AI"}
-                status_code = 500
+        # Если AI опять вернул tool_calls или ошибку – даём fallback на результат первого инструмента
+        if tool_results_for_next_call:
+            try:
+                first_tool_result = json.loads(tool_results_for_next_call[0][1])
+                if first_tool_result.get("status") == "success" and first_tool_result.get("result"):
+                    return {"message": first_tool_result["result"]}, 200
+            except Exception as e:
+                logger.error("Не удалось извлечь результат инструмента: %s", e)
 
-            return response_data, status_code
-
-        except ValueError as ve:  # Обработка конкретных ожидаемых ошибок
-            logger.warning(f"ValueError в _handle_ai_interaction_async: {str(ve)}")
-            if "User message not provided" in str(ve) or "Invalid JSON" in str(
-                ve
-            ):  # Уже установлено в _get_request_data_async или проверке user_message
-                response_data = {"error": str(ve)}
-                status_code = 400
-            else:
-                response_data = {"error": f"Ошибка обработки данных: {str(ve)}"}
-                status_code = 400  # или 500 в зависимости от контекста
-            return response_data, status_code
-        except Exception as e:  # Общая обработка непредвиденных ошибок
-            logger.exception("Error processing assistant query in _handle_ai_interaction_async")
-            response_data = {"error": f"An unexpected server error occurred: {str(e)}"}
-            status_code = 500
-            return response_data, status_code
-        finally:
-            if client:
-                await client.close()  # Гарантированное асинхронное закрытие клиента
+        return {"error": ai_final.get("content", "Неизвестная ошибка AI")}, 500
 
     # Метод post теперь вызывает _handle_ai_interaction_async через async_to_sync
     def post(self, request, *args, **kwargs):
